@@ -26,7 +26,7 @@
         const items = JSON.parse(localStorage.getItem('items')) || [];
         const itemsTableBody = document.getElementById('itemsTableBody');
         itemsTableBody.innerHTML = '';
-
+    
         items.forEach((item, index) => {
             const row = document.createElement('tr');
             
@@ -77,6 +77,7 @@
             itemsTableBody.appendChild(row);
         });
     }
+    
 
     function editItem(index) {
         const items = JSON.parse(localStorage.getItem('items')) || [];
