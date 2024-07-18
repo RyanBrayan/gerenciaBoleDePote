@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciamento de Itens</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./src/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Gerenciamento de Itens</h1>
+        <form id="itemForm" class="form-inline mb-3">
+            <div class="form-group mx-sm-3 mb-2">
+                <label for="itemName" class="sr-only">Nome do Item</label>
+                <input type="text" class="form-control" id="itemName" placeholder="Nome do Item" required>
+            </div>
+            <div class="form-group mx-sm-3 mb-2">
+                <label for="itemQuantity" class="sr-only">Quantidade</label>
+                <input type="number" class="form-control" id="itemQuantity" placeholder="Quantidade" required min="1">
+            </div>
+            <button type="submit" class="btn btn-primary mb-2">Salvar</button>
+        </form>
+        <button id="clearAll" class="btn btn-danger mb-3">Excluir Todos</button>
+        <table class="table table-bordered">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Nome do Item</th>
+                    <th>Nome da Pessoa</th>
+                    <th>Pagou?</th>
+                    <th>Entregue?</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="itemsTableBody">
+                <!-- Conteúdo gerado dinamicamente -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="./src/script/index.js"></script>
+</body>
+</html>
