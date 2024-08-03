@@ -1,9 +1,311 @@
+/* Fonte */
 body {
-    margin: 20px;
+    font-family: 'Open Sans', sans-serif;
 }
-table {
-    width: 100%;
+
+h1 {
+    font-family: 'Roboto', sans-serif;
 }
+
+/* Tabela */
+.table {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+.table thead {
+    background-color: #f8f9fa;
+}
+
+.table thead th {
+    color: #495057;
+    font-weight: 600;
+    border-bottom: 2px solid #ddd;
+}
+
+.table tbody tr {
+    transition: background-color 0.3s;
+}
+
+.table tbody tr:nth-child(odd) {
+    background-color: #f9f9f9;
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+.table tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+.table-success {
+    background-color: #d4edda !important;
+}
+
+.table-danger {
+    background-color: #f8d7da !important;
+}
+
+.table-secondary {
+    background-color: #f0f0f0 !important;
+}
+
+/* Indicadores de Status */
+.status-indicator {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+}
+
+.not-paid {
+    background-color: #ffffff;
+}
+
+.paid {
+    background-color: #28a745;
+}
+
+.not-delivered {
+    background-color: #ffffff;
+}
+
+.delivered {
+    background-color: #28a745;
+}
+
+/* Botões */
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+/* Resumo dos Itens */
+#toggleSummary {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+#summaryIcon {
+    margin-left: 10px;
+    transition: transform 0.3s;
+}
+
+#summaryIcon.rotate {
+    transform: rotate(180deg);
+}
+
+.summary-card {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.summary-item i {
+    font-size: 20px;
+    color: #007bff;
+}
+
+.summary-item span {
+    font-weight: 700;
+    margin-left: 5px;
+}
+
+#summary {
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+#summary.collapse {
+    max-height: 0;
+}
+
+#summary.show {
+    max-height: 300px; /* Ajuste o valor conforme necessário */
+}
+
+/* Legenda das Cores */
+.color-legend {
+    display: flex;
+    flex-wrap: wrap; /* Permite a quebra de linha se necessário */
+    gap: 20px; /* Espaço entre os itens */
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    gap: 10px; /* Espaço entre o indicador e o texto */
+}
+
+.status-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid #ccc;
+}
+
+.status-indicator.paid {
+    background-color: #28a745; /* Verde forte */
+}
+
+.status-indicator.not-paid {
+    background-color: #dc3545; /* Vermelho forte */
+}
+
+.status-indicator.not-delivered {
+    background-color: #ffc107; /* Amarelo forte */
+}
+
+/* Resumo dos Itens */
+.summary-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Alinha os botões ao final da linha */
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.summary-item div {
+    flex-grow: 1;
+}
+
+.summary-item button {
+    transition: background-color 0.3s, border-color 0.3s;
+    margin-left: 10px;
+}
+
+.summary-item button.active {
+    background-color: #007bff; /* Azul */
+    border-color: #007bff;
+    color: white;
+}
+
+.summary-item button.inactive {
+    background-color: #dc3545; /* Vermelho */
+    border-color: #dc3545;
+    color: white;
+}
+
+/* Estilos para campos editáveis */
+.editable {
+    cursor: pointer;
+    border-bottom: 1px dashed #007bff;
+}
+
 .edit-input {
-    width: 80px;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+    background-color: transparent;
+    border-bottom: 1px solid #007bff;
+}
+
+.edit-input:focus {
+    outline: none;
+    background-color: #f8f9fa;
+}
+
+/* Adicionando cursor pointer e animação para a seta */
+.clickable {
+    cursor: pointer;
+}
+
+#summaryIcon.rotate, #valueSummaryIcon.rotate {
+    transform: rotate(180deg);
+}
+
+#summaryIcon, #valueSummaryIcon {
+    transition: transform 0.3s ease;
+}
+
+/* Estilos adicionais para Gerenciamento de Itens */
+.item-management {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.item-management .title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #007bff;
+    text-align: center;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+.item-management .form-control {
+    font-size: 1rem;
+    border: 2px solid #ced4da;
+    border-radius: 5px;
+}
+
+.item-management .form-control:focus {
+    border-color: #007bff;
+    box-shadow: none;
+}
+
+.item-management .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    font-size: 1rem;
+    padding: 10px 20px;
+    border-radius: 5px;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.item-management .btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+}
+
+.item-management .btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    font-size: 1rem;
+    padding: 10px 20px;
+    border-radius: 5px;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.item-management .btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
 }

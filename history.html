@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico de Vendas</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link href="./src/css/history.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="container mt-5">
+        <h1 class="title text-center">Histórico de Vendas</h1>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="filters">
+                    <h5 id="toggleFilters" class="clickable">
+                        <i class="fas fa-filter mr-2"></i>Filtros
+                        <i id="filtersIcon" class="fas fa-chevron-down ml-2"></i>
+                    </h5>
+                    <div id="filters" class="collapse show">
+                        <div class="summary-card">
+                            <div class="summary-item">
+                                <label for="filterDate">Data</label>
+                                <input type="date" class="form-control" id="filterDate" placeholder="dd/mm/aaaa">
+                            </div>
+                            <div class="summary-item">
+                                <label for="filterPersonName">Nome da Pessoa</label>
+                                <input type="text" class="form-control" id="filterPersonName" placeholder="Nome da Pessoa">
+                            </div>
+                            <div class="summary-item">
+                                <label for="filterPaidStatus">Pagamento</label>
+                                <select class="form-control" id="filterPaidStatus">
+                                    <option value="all">Todos</option>
+                                    <option value="paid">Pagos</option>
+                                    <option value="unpaid">Não Pagos</option>
+                                </select>
+                            </div>
+                            <div class="summary-item">
+                                <label for="filterDeliveredStatus">Entrega</label>
+                                <select class="form-control" id="filterDeliveredStatus">
+                                    <option value="all">Todos</option>
+                                    <option value="delivered">Entregues</option>
+                                    <option value="undelivered">Não Entregues</option>
+                                </select>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <button id="filterButton" class="btn btn-primary mt-2">Filtrar</button>
+                                <button id="resetButton" class="btn btn-secondary mt-2 ml-2">Redefinir</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <div class="row">
+                    <div class="col-12 mb-4">
+                        <h5 id="toggleValueSummary" class="clickable">
+                            <i class="fas fa-dollar-sign mr-2"></i>Resumo de Pagamentos
+                            <i id="valueSummaryIcon" class="fas fa-chevron-down ml-2"></i>
+                        </h5>
+                        <div id="valueSummary" class="collapse">
+                            <div class="summary-card">
+                                <div class="summary-item">
+                                    <i class="fas fa-coins mr-2"></i>
+                                    Total a Receber: R$ <span id="totalValueToReceive">0.00</span>
+                                </div>
+                                <div class="summary-item">
+                                    <i class="fas fa-hand-holding-usd mr-2"></i>
+                                    Total Recebido: R$ <span id="totalValueReceived">0.00</span>
+                                </div>
+                                <div class="summary-item">
+                                    <i class="fas fa-money-bill-wave mr-2"></i>
+                                    Total a Receber: R$ <span id="totalValuePending">0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="salesList" class="row">
+                        <!-- Histórico de vendas será listado aqui -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button id="backButton" class="btn btn-secondary my-3">Voltar</button>
+    </div>
+    <script src="./src/script/history.js"></script>
+    <script>
+      document
+        .getElementById("backButton")
+        .addEventListener("click", function () {
+          window.location.href = "index.html";
+        });
+    </script>
+  </body>
+</html>
