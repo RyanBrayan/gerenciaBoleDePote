@@ -149,7 +149,31 @@
           </div>
         </div>
       </div>
-
+      <div id="addItemForm" class="mb-4">
+        <div class="form-row">
+          <div class="col-md-2 mb-2">
+            <select id="itemDropdown" class="form-control">
+              <!-- Opções serão adicionadas dinamicamente -->
+            </select>
+          </div>
+          <div class="col-md-2 mb-2">
+            <input type="text" id="personNameInput" class="form-control" placeholder="Nome da Pessoa">
+          </div>
+          <div class="col-md-2 mb-2">
+            <input type="number" id="itemQuantityInput" class="form-control" placeholder="Quantidade" min="1">
+          </div>
+          <div class="col-md-1 mb-2">
+            <input type="checkbox" id="paidCheckbox"> Pagou
+          </div>
+          <div class="col-md-2 mb-2">
+            <input type="checkbox" id="deliveredCheckbox"> Entregue
+          </div>
+          <div class="col-md-2 mb-2">
+            <button id="addItemButton" class="btn btn-primary">Adicionar</button>
+          </div>
+        </div>
+      </div>
+      
       <div class="mt-5 d-flex flex justify-content-between">
         <div>
           <div class="color-legend">
@@ -171,6 +195,9 @@
           <button id="clearAll" class="btn btn-danger mb-3">
             Excluir Todos
           </button>
+          <button id="saveHistory" class="btn btn-danger mb-3">
+            Salvar historico
+          </button>
           <a href="./history.html" class="btn btn-secondary mb-3"
             >Ver Histórico</a
           >
@@ -186,6 +213,9 @@
             <th>Ações</th>
           </tr>
         </thead>
+        <div id="searchItemForm" class="mb-2">
+          <input type="text" id="searchInput" class="form-control" placeholder="Pesquisar item...">
+        </div>      
         <tbody id="itemsTableBody">
           <!-- Conteúdo gerado dinamicamente -->
         </tbody>

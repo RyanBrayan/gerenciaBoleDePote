@@ -19,7 +19,7 @@ function loadSales(filterDate = null, filterPersonName = '', filterPaidStatus = 
             if (filterDate && sale.date !== filterDate) {
                 includeSale = false;
             }
-            if (filterPersonName && !sale.personName.toLowerCase().includes(filterPersonName.toLowerCase())) {
+            if (filterDate && new Date(sale.date).toISOString().split('T')[0] !== filterDate) {
                 includeSale = false;
             }
             if (filterPaidStatus !== 'all' && ((filterPaidStatus === 'paid' && !sale.paid) || (filterPaidStatus === 'unpaid' && sale.paid))) {

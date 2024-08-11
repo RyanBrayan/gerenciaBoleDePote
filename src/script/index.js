@@ -22,10 +22,11 @@ document.getElementById('itemForm').addEventListener('submit', function(e) {
     document.getElementById('itemForm').reset();
     loadItems();
     updateValueSummary();
+    populateItemDropdown()
 });
 
 // Função para carregar os itens da localStorage e aplicar o filtro
-function loadItems(filter = 'all') {
+function loadItems(filter = 'all', searchText = '') {
     const items = JSON.parse(localStorage.getItem('items')) || [];
     const itemsTableBody = document.getElementById('itemsTableBody');
     itemsTableBody.innerHTML = '';
@@ -43,14 +44,24 @@ function loadItems(filter = 'all') {
     document.getElementById('unpaidPeopleCount').textContent = unpaidPeople;
     document.getElementById('undeliveredPeopleCount').textContent = undeliveredPeople;
 
-    // Aplicar filtro, se necessário
-    const filteredItems = filter === 'all' ? items : items.filter(item => {
-        if (filter === 'available') return item.personName === '';
-        if (filter === 'paid') return item.paid;
-        if (filter === 'unpaid') return !item.paid && item.personName !== '';
-        if (filter === 'undelivered') return !item.delivered && item.personName !== '';
+    // Aplicar filtro por tipo e por texto de busca
+    const filteredItems = items.filter(item => {
+        let matchesFilter = true;
+
+        // Verifica o filtro
+        if (filter === 'available') matchesFilter = item.personName === '';
+        if (filter === 'paid') matchesFilter = item.paid;
+        if (filter === 'unpaid') matchesFilter = !item.paid && item.personName !== '';
+        if (filter === 'undelivered') matchesFilter = !item.delivered && item.personName !== '';
+
+        // Verifica o texto de busca
+        const matchesSearch = item.itemName.toLowerCase().includes(searchText.toLowerCase()) ||
+                              item.personName.toLowerCase().includes(searchText.toLowerCase());
+
+        return matchesFilter && matchesSearch;
     });
 
+    // Renderizar os itens filtrados
     filteredItems.forEach((item, index) => {
         const row = document.createElement('tr');
 
@@ -104,6 +115,7 @@ function loadItems(filter = 'all') {
     });
     updateValueSummary();
 }
+
 
 // Função para adicionar um novo item
 document.getElementById('itemForm').addEventListener('submit', function(event) {
@@ -181,9 +193,16 @@ function deleteItem(index) {
 }
 
 // Função para excluir todos os itens
-// Função para excluir todos os itens com confirmação e salvar no IndexedDB
 document.getElementById('clearAll').addEventListener('click', function() {
-    if (confirm("Você tem certeza que deseja excluir todos os itens e salvar no histórico?")) {
+    if (confirm("Deseja excluir todos os itens?")) {
+            localStorage.removeItem('items');
+            loadItems();
+            populateItemDropdown()
+    }
+});
+// Função para excluir todos os itens com confirmação e salvar no IndexedDB
+document.getElementById('saveHistory').addEventListener('click', function() {
+    if (confirm("Deseja excluir todos os itens e salvar no histórico?")) {
         const items = JSON.parse(localStorage.getItem('items')) || [];
         let transaction = db.transaction(["sales"], "readwrite");
         let objectStore = transaction.objectStore("sales");
@@ -206,6 +225,8 @@ document.getElementById('clearAll').addEventListener('click', function() {
             console.log("Itens salvos no histórico.");
             localStorage.removeItem('items');
             loadItems();
+            populateItemDropdown()
+
         };
 
         transaction.onerror = function(event) {
@@ -309,4 +330,153 @@ document.getElementById('toggleValueSummary').addEventListener('click', function
         valueSummary.classList.add('collapse');
         valueSummaryIcon.classList.remove('rotate');
     }
+});
+
+function populateItemDropdown() {
+    const items = JSON.parse(localStorage.getItem('items')) || [];
+    const itemDropdown = document.getElementById('itemDropdown');
+    
+
+    // Contagem de itens disponíveis e repetidos
+    const itemCounts = items.reduce((acc, item) => {
+        if (!acc[item.itemName]) {
+            acc[item.itemName] = { total: 0, available: 0 };
+        }
+        acc[item.itemName].total += 1;
+        if (!item.personName) {
+            acc[item.itemName].available += 1;
+        }
+        return acc;
+    }, {});
+
+    itemDropdown.innerHTML = ''; // Limpar o dropdown antes de preencher
+
+    // Adicionar opções ao dropdown com o nome do item e os totais
+    Object.keys(itemCounts).forEach(itemName => {
+        const option = document.createElement('option');
+        option.value = itemName;
+        const { available } = itemCounts[itemName];
+        option.textContent = `${itemName} (${available})`;
+
+        // Aplicar cores conforme a disponibilidade
+        if (available === 0) {
+            option.disabled = true;
+            option.style.background = 'red';  // Vermelho para 0 disponíveis
+            option.style.color = 'white';  
+        } 
+
+        itemDropdown.appendChild(option);
+    });
+}
+
+
+
+document.getElementById('addItemButton').addEventListener('click', function() {
+    const itemName = document.getElementById('itemDropdown').value;
+    const personName = document.getElementById('personNameInput').value.trim();
+    let itemQuantity = parseInt(document.getElementById('itemQuantityInput').value.trim(), 10);
+    const paid = document.getElementById('paidCheckbox').checked;
+    const delivered = document.getElementById('deliveredCheckbox').checked;
+
+    if (itemName && personName && itemQuantity > 0) {
+        let items = JSON.parse(localStorage.getItem('items')) || [];
+
+        // Atualiza os itens com as informações inseridas
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].itemName === itemName && !items[i].personName) {
+                items[i].personName = personName;
+                items[i].paid = paid;
+                items[i].delivered = delivered;
+                itemQuantity--;
+
+                if (itemQuantity === 0) break; // Sai do loop quando a quantidade desejada for atingida
+            }
+        }
+
+        localStorage.setItem('items', JSON.stringify(items));
+        loadItems(); // Atualiza a tabela com as novas informações
+        updateValueSummary(); // Atualiza o resumo de valores
+
+        // Limpar os campos após a adição
+        document.getElementById('personNameInput').value = '';
+        document.getElementById('itemQuantityInput').value = '';
+        document.getElementById('paidCheckbox').checked = false;
+        document.getElementById('deliveredCheckbox').checked = false;
+        populateItemDropdown()
+    } else {
+        alert("Por favor, preencha todos os campos corretamente.");
+    }
+});
+
+
+function filterTable(searchText) {
+    const items = JSON.parse(localStorage.getItem('items')) || [];
+    const itemsTableBody = document.getElementById('itemsTableBody');
+    
+    // Limpa a tabela antes de aplicar o filtro
+    itemsTableBody.innerHTML = '';
+
+    // Filtra os itens com base no texto de pesquisa
+    const filteredItems = items.filter(item => {
+        return item.itemName.toLowerCase().includes(searchText.toLowerCase()) ||
+               item.personName.toLowerCase().includes(searchText.toLowerCase());
+    });
+
+    // Atualiza a tabela com os itens filtrados
+    filteredItems.forEach((item, index) => {
+        const row = document.createElement('tr');
+
+        // Definir a cor da linha com base no status do item
+        if (item.paid && item.delivered) {
+            row.classList.add('table-success'); // Verde para pago e entregue
+        } else if (item.personName !== '' && (!item.paid || !item.delivered)) {
+            row.classList.add('table-danger'); // Vermelho para atribuído mas não pago ou entregue
+        } else {
+            row.classList.add('table-secondary'); // Branco para disponível
+        }
+
+        const itemNameCell = document.createElement('td');
+        itemNameCell.textContent = item.itemName;
+        row.appendChild(itemNameCell);
+        
+        const personNameCell = document.createElement('td');
+        personNameCell.textContent = item.personName;
+        row.appendChild(personNameCell);
+        
+        const paidCell = document.createElement('td');
+        const paidIndicator = document.createElement('div');
+        paidIndicator.classList.add('status-indicator');
+        paidIndicator.classList.add(item.paid ? 'paid' : 'not-paid');
+        paidCell.appendChild(paidIndicator);
+        row.appendChild(paidCell);
+        
+        const deliveredCell = document.createElement('td');
+        const deliveredIndicator = document.createElement('div');
+        deliveredIndicator.classList.add('status-indicator');
+        deliveredIndicator.classList.add(item.delivered ? 'delivered' : 'not-delivered');
+        deliveredCell.appendChild(deliveredIndicator);
+        row.appendChild(deliveredCell);
+        
+        const actionsCell = document.createElement('td');
+        const deleteButton = document.createElement('button');
+        deleteButton.classList.add('btn', 'btn-danger', 'btn-sm', 'ml-2');
+        deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
+        deleteButton.addEventListener('click', () => deleteItem(index));
+        
+        actionsCell.appendChild(deleteButton);
+        row.appendChild(actionsCell);
+        
+        itemsTableBody.appendChild(row);
+    });
+}
+// Evento de pesquisa na tabela
+document.getElementById('searchInput').addEventListener('input', function() {
+    const searchText = this.value.trim();
+    loadItems("all",searchText);
+});
+
+
+// Chame essa função quando a página carregar
+window.addEventListener('load', () => {
+    populateItemDropdown();
 });
