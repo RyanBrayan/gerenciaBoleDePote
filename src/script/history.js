@@ -128,3 +128,12 @@ document.getElementById('toggleFilters').addEventListener('click', function() {
         filtersIcon.classList.remove('rotate');
     }
 });
+
+$(document).ready(function() {
+    if (!Modernizr.inputtypes.date) {
+        // Se o navegador não suportar input[type="date"], aplica o Datepicker
+        $('#filterDate').datepicker({
+            dateFormat: 'yy-mm-dd' // Formato que será retornado no input
+        });
+    }
+});
