@@ -6,15 +6,18 @@ document.getElementById('itemForm').addEventListener('submit', function(e) {
     const itemPrice = parseFloat(document.getElementById('itemPrice').value);
     
     const items = JSON.parse(localStorage.getItem('items')) || [];
-    
+    let index = localStorage.getItem('items') || 0;
+    index = index != null ? items.length : 0
+
     for (let i = 0; i < itemQuantity; i++) {
-        items.push({
+        items.push({id: index,
             itemName,
             personName: '',
             paid: false,
             delivered: false,
             price: itemPrice
         });
+        index += 1
     }
     
     localStorage.setItem('items', JSON.stringify(items));
@@ -90,7 +93,7 @@ function loadItems(filter = 'all', searchText = '') {
         const paidIndicator = document.createElement('div');
         paidIndicator.classList.add('status-indicator');
         paidIndicator.classList.add(item.paid ? 'paid' : 'not-paid');
-        paidIndicator.addEventListener('click', () => toggleStatus(index, 'paid'));
+        paidIndicator.addEventListener('click', () => toggleStatus(item.id, 'paid'));
         paidCell.appendChild(paidIndicator);
         row.appendChild(paidCell);
         
@@ -98,7 +101,7 @@ function loadItems(filter = 'all', searchText = '') {
         const deliveredIndicator = document.createElement('div');
         deliveredIndicator.classList.add('status-indicator');
         deliveredIndicator.classList.add(item.delivered ? 'delivered' : 'not-delivered');
-        deliveredIndicator.addEventListener('click', () => toggleStatus(index, 'delivered'));
+        deliveredIndicator.addEventListener('click', () => toggleStatus(item.id, 'delivered'));
         deliveredCell.appendChild(deliveredIndicator);
         row.appendChild(deliveredCell);
         
