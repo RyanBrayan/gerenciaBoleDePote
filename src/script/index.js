@@ -1,3 +1,5 @@
+let currentSearchText = '';
+
 document.getElementById('itemForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -184,8 +186,9 @@ function toggleStatus(index, status) {
     const items = JSON.parse(localStorage.getItem('items')) || [];
     items[index][status] = !items[index][status];
     localStorage.setItem('items', JSON.stringify(items));
-    loadItems();
+    loadItems('all', currentSearchText);
 }
+
 
 // Função para excluir um item
 function deleteItem(index) {
@@ -413,73 +416,20 @@ document.getElementById('addItemButton').addEventListener('click', function() {
 
 
 function filterTable(searchText) {
-    const items = JSON.parse(localStorage.getItem('items')) || [];
-    const itemsTableBody = document.getElementById('itemsTableBody');
-    
-    // Limpa a tabela antes de aplicar o filtro
-    itemsTableBody.innerHTML = '';
-
-    // Filtra os itens com base no texto de pesquisa
-    const filteredItems = items.filter(item => {
-        return item.itemName.toLowerCase().includes(searchText.toLowerCase()) ||
-               item.personName.toLowerCase().includes(searchText.toLowerCase());
-    });
-
-    // Atualiza a tabela com os itens filtrados
-    filteredItems.forEach((item, index) => {
-        const row = document.createElement('tr');
-
-        // Definir a cor da linha com base no status do item
-        if (item.paid && item.delivered) {
-            row.classList.add('table-success'); // Verde para pago e entregue
-        } else if (item.personName !== '' && (!item.paid || !item.delivered)) {
-            row.classList.add('table-danger'); // Vermelho para atribuído mas não pago ou entregue
-        } else {
-            row.classList.add('table-secondary'); // Branco para disponível
-        }
-
-        const itemNameCell = document.createElement('td');
-        itemNameCell.textContent = item.itemName;
-        row.appendChild(itemNameCell);
-        
-        const personNameCell = document.createElement('td');
-        personNameCell.textContent = item.personName;
-        row.appendChild(personNameCell);
-        
-        const paidCell = document.createElement('td');
-        const paidIndicator = document.createElement('div');
-        paidIndicator.classList.add('status-indicator');
-        paidIndicator.classList.add(item.paid ? 'paid' : 'not-paid');
-        paidCell.appendChild(paidIndicator);
-        row.appendChild(paidCell);
-        
-        const deliveredCell = document.createElement('td');
-        const deliveredIndicator = document.createElement('div');
-        deliveredIndicator.classList.add('status-indicator');
-        deliveredIndicator.classList.add(item.delivered ? 'delivered' : 'not-delivered');
-        deliveredCell.appendChild(deliveredIndicator);
-        row.appendChild(deliveredCell);
-        
-        const actionsCell = document.createElement('td');
-        const deleteButton = document.createElement('button');
-        deleteButton.classList.add('btn', 'btn-danger', 'btn-sm', 'ml-2');
-        deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
-        deleteButton.addEventListener('click', () => deleteItem(index));
-        
-        actionsCell.appendChild(deleteButton);
-        row.appendChild(actionsCell);
-        
-        itemsTableBody.appendChild(row);
-    });
+    currentSearchText = searchText; // Armazena o filtro atual
+    loadItems('all', currentSearchText);
 }
+
 // Evento de pesquisa na tabela
 document.getElementById('searchInput').addEventListener('input', function() {
     const searchText = this.value.trim();
-    loadItems("all",searchText);
+    filterTable(searchText);
 });
+
 
 
 // Chame essa função quando a página carregar
 window.addEventListener('load', () => {
     populateItemDropdown();
+    loadItems('all', currentSearchText);
 });
