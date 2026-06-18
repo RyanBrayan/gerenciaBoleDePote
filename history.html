@@ -1,101 +1,121 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Histórico de Vendas</title>
-    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <link href="./src/css/history.css" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Histórico de sessões de vendas. Consulte, filtre e gere relatórios em PDF." />
+    <meta name="theme-color" content="#ea580c" />
+    <title>Histórico de Vendas — Gerenciamento de Itens</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="./src/css/style.css" />
+    <link rel="stylesheet" href="./src/css/history.css" />
   </head>
   <body>
-    <div class="container mt-5">
-        <h1 class="title text-center">Histórico de Vendas</h1>
-        <div class="row">
-            <div class="col-md-3">
-                <div class="filters">
-                    <h5 id="toggleFilters" class="clickable">
-                        <i class="fas fa-filter mr-2"></i>Filtros
-                        <i id="filtersIcon" class="fas fa-chevron-down ml-2"></i>
-                    </h5>
-                    <div id="filters" class="collapse show">
-                        <div class="summary-card">
-                            <div class="summary-item">
-                                <label for="filterDate">Data</label>
-                                <input type="date" class="form-control" id="filterDate" placeholder="dd/mm/aaaa">
-                            </div>
-                            <div class="summary-item">
-                                <label for="filterPersonName">Nome da Pessoa</label>
-                                <input type="text" class="form-control" id="filterPersonName" placeholder="Nome da Pessoa">
-                            </div>
-                            <div class="summary-item">
-                                <label for="filterPaidStatus">Pagamento</label>
-                                <select class="form-control" id="filterPaidStatus">
-                                    <option value="all">Todos</option>
-                                    <option value="paid">Pagos</option>
-                                    <option value="unpaid">Não Pagos</option>
-                                </select>
-                            </div>
-                            <div class="summary-item">
-                                <label for="filterDeliveredStatus">Entrega</label>
-                                <select class="form-control" id="filterDeliveredStatus">
-                                    <option value="all">Todos</option>
-                                    <option value="delivered">Entregues</option>
-                                    <option value="undelivered">Não Entregues</option>
-                                </select>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <button id="filterButton" class="btn btn-primary mt-2">Filtrar</button>
-                                <button id="resetButton" class="btn btn-secondary mt-2 ml-2">Redefinir</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-9">
-                <div class="row">
-                    <div class="col-12 mb-4">
-                        <h5 id="toggleValueSummary" class="clickable">
-                            <i class="fas fa-dollar-sign mr-2"></i>Resumo de Pagamentos
-                            <i id="valueSummaryIcon" class="fas fa-chevron-down ml-2"></i>
-                        </h5>
-                        <div id="valueSummary" class="collapse">
-                            <div class="summary-card">
-                                <div class="summary-item">
-                                    <i class="fas fa-coins mr-2"></i>
-                                    Total a Receber: R$ <span id="totalValueToReceive">0.00</span>
-                                </div>
-                                <div class="summary-item">
-                                    <i class="fas fa-hand-holding-usd mr-2"></i>
-                                    Total Recebido: R$ <span id="totalValueReceived">0.00</span>
-                                </div>
-                                <div class="summary-item">
-                                    <i class="fas fa-money-bill-wave mr-2"></i>
-                                    Total a Receber: R$ <span id="totalValuePending">0.00</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="salesList" class="row">
-                        <!-- Histórico de vendas será listado aqui -->
-                    </div>
-                </div>
-            </div>
-        </div>
-        <button id="backButton" class="btn btn-secondary my-3">Voltar</button>
-    </div>
-    <script src="./src/script/history.js"></script>
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
-    <script>
-      document
-        .getElementById("backButton")
-        .addEventListener("click", function () {
-          window.location.href = "index.html";
-        });
-    </script>
+    <!-- ── HEADER ── -->
+    <header class="app-header">
+      <div class="app-header__logo">
+        <button class="header-btn" id="btnBack" aria-label="Voltar">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <span class="app-header__logo-icon" style="margin-left:4px">📋</span>
+        <span class="app-header__title">Histórico</span>
+      </div>
+      <div class="app-header__actions">
+        <button class="header-btn" id="btnExportAll" title="Exportar tudo em PDF">
+          <i class="fas fa-file-pdf"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── TOAST CONTAINER ── -->
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+    <!-- ── OVERLAY / BOTTOM SHEET FILTROS ── -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Bottom Sheet: Filtros -->
+    <div class="bottom-sheet" id="filterSheet" role="dialog" aria-modal="true" aria-label="Filtros">
+      <div class="bottom-sheet__handle"></div>
+      <p class="bottom-sheet__title">Filtrar Histórico</p>
+      <div class="filter-sheet-grid">
+        <div class="form-group">
+          <label class="form-label" for="filterDate">Data</label>
+          <input type="date" class="form-input" id="filterDate" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="filterPersonName">Nome da Pessoa</label>
+          <input type="text" class="form-input" id="filterPersonName" placeholder="Buscar por nome" />
+        </div>
+        <div class="filter-sheet-row">
+          <div class="form-group">
+            <label class="form-label" for="filterPaidStatus">Pagamento</label>
+            <div class="form-select-wrap">
+              <select class="form-input" id="filterPaidStatus">
+                <option value="all">Todos</option>
+                <option value="paid">Pagos</option>
+                <option value="unpaid">Não Pagos</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="filterDeliveredStatus">Entrega</label>
+            <div class="form-select-wrap">
+              <select class="form-input" id="filterDeliveredStatus">
+                <option value="all">Todos</option>
+                <option value="delivered">Entregues</option>
+                <option value="undelivered">Pendentes</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-sheet__actions">
+        <button class="btn btn-primary btn-full" id="btnApplyFilter">
+          <i class="fas fa-filter"></i> Aplicar Filtros
+        </button>
+        <button class="btn btn-secondary btn-full" id="btnResetFilter">
+          <i class="fas fa-times"></i> Limpar Filtros
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Sheet: Confirmação excluir sessão -->
+    <div class="bottom-sheet" id="confirmSheet" role="dialog" aria-modal="true">
+      <div class="bottom-sheet__handle"></div>
+      <p class="bottom-sheet__title" id="sheetTitle">Confirmar ação</p>
+      <p class="bottom-sheet__desc" id="sheetDesc"></p>
+      <div class="bottom-sheet__actions">
+        <button class="btn btn-danger btn-full" id="sheetConfirm">Confirmar</button>
+        <button class="btn btn-secondary btn-full" id="sheetCancel">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- ── CONTEÚDO PRINCIPAL ── -->
+    <main class="app-main" id="appMain">
+
+      <!-- Busca + botão filtros -->
+      <div class="history-toolbar">
+        <div class="search-bar" style="flex:1">
+          <i class="fas fa-search search-bar__icon"></i>
+          <input type="text" class="form-input" id="searchHistory" placeholder="Buscar em todas as sessões..." />
+        </div>
+        <button class="btn-filter-open" id="btnOpenFilter" aria-label="Abrir filtros">
+          <i class="fas fa-sliders-h"></i>
+        </button>
+      </div>
+
+      <!-- Lista de sessões -->
+      <div id="sessionsList">
+        <!-- Gerado dinamicamente -->
+      </div>
+
+    </main>
+
+    <!-- ── SCRIPTS ── -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="./src/script/indexedDB.js"></script>
+    <script src="./src/script/pdf.js"></script>
+    <script src="./src/script/history.js"></script>
   </body>
 </html>

@@ -1,181 +1,241 @@
-/* Fonte */
-body {
-    font-family: 'Open Sans', sans-serif;
+/* ═══════════════════════════════════════════════════════════════
+   HISTORY — Estilos específicos (complementa style.css)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Herda tudo do design system. Este arquivo adiciona apenas
+   estilos exclusivos da página de histórico. */
+
+/* ── Card de sessão ── */
+.session-card {
+  background: var(--clr-surface);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--clr-border);
+  overflow: hidden;
+  transition: var(--transition);
+  animation: slideIn 0.25s ease;
 }
 
-h1 {
-    font-family: 'Roboto', sans-serif;
-    font-weight: 700;
-    color: #007bff;
-    text-align: center;
-    margin-bottom: 20px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
+.session-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
-/* Estilos gerais */
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+.session-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  cursor: pointer;
+  user-select: none;
 }
 
-.history .form-control {
-    font-size: 1rem;
-    border: 1px solid #ced4da;
-    border-radius: 8px;
-    padding: 10px;
-    transition: border-color 0.3s, box-shadow 0.3s;
+.session-header:active {
+  background: var(--clr-neutral-bg);
 }
 
-.history .form-control:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 10px rgba(0, 123, 255, 0.25);
+.session-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--clr-brand-xlight);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
 }
 
-.history .btn-primary {
-    background-color: #007bff;
-    border-color: #007bff;
-    font-size: 1rem;
-    padding: 10px 20px;
-    border-radius: 8px;
-    transition: background-color 0.3s, border-color 0.3s;
+.session-info {
+  flex: 1;
+  min-width: 0;
 }
 
-.history .btn-primary:hover {
-    background-color: #0056b3;
-    border-color: #004085;
+.session-date {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--clr-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.history .btn-secondary {
-    background-color: #6c757d;
-    border-color: #6c757d;
-    font-size: 1rem;
-    padding: 10px 20px;
-    border-radius: 8px;
-    transition: background-color 0.3s, border-color 0.3s;
+.session-label {
+  font-size: 12px;
+  color: var(--clr-text-muted);
+  margin-top: 2px;
 }
 
-.history .btn-secondary:hover {
-    background-color: #5a6268;
-    border-color: #545b62;
+.session-stats {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-1);
 }
 
-.sale-item {
-    background: #ffffff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.session-stat {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--clr-neutral-bg);
+  color: var(--clr-text-muted);
 }
 
-/* Resumo de Valores */
-#toggleValueSummary, #toggleFilters {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    font-size: 18px;
-    font-weight: 600;
-    color: #007bff;
+.session-stat.money { background: var(--clr-brand-xlight); color: var(--clr-brand); }
+.session-stat.ok    { background: var(--clr-success-bg);   color: var(--clr-success); }
+.session-stat.warn  { background: var(--clr-danger-bg);    color: var(--clr-danger); }
+
+.session-chevron {
+  color: var(--clr-text-muted);
+  font-size: 12px;
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
 }
 
-#valueSummaryIcon, #filtersIcon {
-    margin-left: 10px;
-    transition: transform 0.3s;
+.session-chevron.open { transform: rotate(180deg); }
+
+/* ── Corpo da sessão (itens) ── */
+.session-body {
+  border-top: 1px solid var(--clr-border);
 }
 
-#valueSummaryIcon.rotate, #filtersIcon.rotate {
-    transform: rotate(180deg);
+.session-body.collapsed { display: none; }
+
+/* Mini cards dos itens dentro da sessão */
+.session-item {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--clr-border);
+  gap: var(--space-3);
 }
 
-.summary-card {
-    background: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.session-item:last-child { border-bottom: none; }
+
+.session-item__info {
+  flex: 1;
+  min-width: 0;
 }
 
-.summary-item {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 15px;
-    font-size: 16px;
+.session-item__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--clr-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.summary-item label {
-    font-weight: 600;
-    margin-bottom: 5px;
-    color: #495057;
+.session-item__product {
+  font-size: 12px;
+  color: var(--clr-text-muted);
 }
 
-.summary-item i {
-    font-size: 20px;
-    color: #007bff;
+.session-item__price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--clr-brand);
+  flex-shrink: 0;
 }
 
-.summary-item span {
-    font-weight: 700;
-    margin-left: 5px;
+.session-item__badges {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
 }
 
-#valueSummary, #filters {
-    overflow: hidden;
-    transition: max-height 0.3s ease-out;
+/* Badge menor para lista da sessão */
+.badge-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
 }
 
-#valueSummary.collapse, #filters.collapse {
-    max-height: 0;
+/* ── Ações da sessão ── */
+.session-actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--clr-bg);
+  border-top: 1px solid var(--clr-border);
 }
 
-#valueSummary.show, #filters.show {
-    max-height: 600px; /* Ajuste o valor conforme necessário */
+.session-actions .btn {
+  flex: 1;
+  font-size: 13px;
+  min-height: 40px;
 }
 
-/* Estilos adicionais para a página de histórico */
-#filterButton {
-    margin-top: 20px;
-    width: 100%;
-    font-weight: bold;
+/* ── Estado vazio ── */
+.history-empty {
+  text-align: center;
+  padding: 60px var(--space-8);
+  color: var(--clr-text-muted);
 }
 
-#filterDate, #filterPersonName, #filterPaidStatus, #filterDeliveredStatus {
-    margin-bottom: 15px;
+.history-empty__icon {
+  font-size: 56px;
+  margin-bottom: var(--space-4);
+  opacity: 0.3;
 }
 
-.form-control::placeholder {
-    color: #6c757d;
-    opacity: 1;
+.history-empty__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--clr-text);
+  margin-bottom: var(--space-2);
 }
 
-.form-control:-ms-input-placeholder {
-    color: #6c757d;
+.history-empty__desc {
+  font-size: 14px;
 }
 
-.form-control::-ms-input-placeholder {
-    color: #6c757d;
+/* ── Bottom sheet de filtros ── */
+.filter-sheet-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
-/* Estilos para itens de vendas */
-#salesList {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-left: 15px;
+.filter-sheet-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
 }
 
-.sale-item {
-    flex: 1 1 calc(33.333% - 30px); /* Três itens por linha, ajuste conforme necessário */
-    box-sizing: border-box;
-    margin: 0;
+/* ── Barra superior de filtro rápido ── */
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
-.sale-item strong {
-    font-weight: bold;
+.history-toolbar .search-bar { flex: 1; }
+
+.btn-filter-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--clr-border);
+  background: var(--clr-surface);
+  color: var(--clr-text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
 }
 
-.sale-item div {
-    margin-bottom: 8px; /* Espaçamento entre linhas de informação */
+.btn-filter-open:active,
+.btn-filter-open.has-filter {
+  border-color: var(--clr-brand);
+  color: var(--clr-brand);
+  background: var(--clr-brand-xlight);
 }

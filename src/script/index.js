@@ -1,435 +1,550 @@
-let currentSearchText = '';
+/**
+ * index.js — Lógica da tela principal
+ * Gerenciamento de Itens — Mobile First
+ */
 
-document.getElementById('itemForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const itemName = document.getElementById('itemName').value;
-    const itemQuantity = parseInt(document.getElementById('itemQuantity').value);
-    const itemPrice = parseFloat(document.getElementById('itemPrice').value);
-    
-    const items = JSON.parse(localStorage.getItem('items')) || [];
-    let index = localStorage.getItem('items') || 0;
-    index = index != null ? items.length : 0
+'use strict';
 
-    for (let i = 0; i < itemQuantity; i++) {
-        items.push({id: index,
-            itemName,
-            personName: '',
-            paid: false,
-            delivered: false,
-            price: itemPrice
-        });
-        index += 1
-    }
-    
-    localStorage.setItem('items', JSON.stringify(items));
-    
-    document.getElementById('itemForm').reset();
-    loadItems();
-    updateValueSummary();
-    populateItemDropdown()
-});
+// ── Estado ─────────────────────────────────────────────────────
+let currentFilter = 'all';
+let currentSearch = '';
+let currentQty = 1;
+let sheetResolve = null;
 
-// Função para carregar os itens da localStorage e aplicar o filtro
-function loadItems(filter = 'all', searchText = '') {
-    const items = JSON.parse(localStorage.getItem('items')) || [];
-    const itemsTableBody = document.getElementById('itemsTableBody');
-    itemsTableBody.innerHTML = '';
+// ── Helpers: localStorage ──────────────────────────────────────
 
-    let totalItems = items.length;
-    let availableItems = items.filter(item => item.personName === '').length;
-    let paidPeople = items.filter(item => item.paid).length;
-    let unpaidPeople = items.filter(item => !item.paid && item.personName !== '').length;
-    let undeliveredPeople = items.filter(item => !item.delivered && item.personName !== '').length;
+function getItems() {
+  return JSON.parse(localStorage.getItem('items')) || [];
+}
 
-    // Atualizar o resumo dos itens
-    document.getElementById('totalItemsCount').textContent = totalItems;
-    document.getElementById('availableItemsCount').textContent = availableItems;
-    document.getElementById('paidPeopleCount').textContent = paidPeople;
-    document.getElementById('unpaidPeopleCount').textContent = unpaidPeople;
-    document.getElementById('undeliveredPeopleCount').textContent = undeliveredPeople;
+function setItems(items) {
+  localStorage.setItem('items', JSON.stringify(items));
+}
 
-    // Aplicar filtro por tipo e por texto de busca
-    const filteredItems = items.filter(item => {
-        let matchesFilter = true;
+function getPersonNames() {
+  return JSON.parse(localStorage.getItem('personNames')) || [];
+}
 
-        // Verifica o filtro
-        if (filter === 'available') matchesFilter = item.personName === '';
-        if (filter === 'paid') matchesFilter = item.paid;
-        if (filter === 'unpaid') matchesFilter = !item.paid && item.personName !== '';
-        if (filter === 'undelivered') matchesFilter = !item.delivered && item.personName !== '';
+function addPersonName(name) {
+  if (!name) return;
+  const names = getPersonNames();
+  if (!names.includes(name)) {
+    names.push(name);
+    localStorage.setItem('personNames', JSON.stringify(names));
+  }
+}
 
-        // Verifica o texto de busca
-        const matchesSearch = item.itemName.toLowerCase().includes(searchText.toLowerCase()) ||
-                              item.personName.toLowerCase().includes(searchText.toLowerCase());
+// ── Toast ──────────────────────────────────────────────────────
 
-        return matchesFilter && matchesSearch;
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'toastOut 0.3s ease forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// ── Bottom Sheet (substitui confirm()) ─────────────────────────
+
+function openConfirmSheet(title, desc) {
+  return new Promise((resolve) => {
+    sheetResolve = resolve;
+    document.getElementById('sheetTitle').textContent = title;
+    document.getElementById('sheetDesc').textContent = desc;
+    document.getElementById('overlay').classList.add('active');
+    document.getElementById('confirmSheet').classList.add('active');
+  });
+}
+
+function closeSheet(result) {
+  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('confirmSheet').classList.remove('active');
+  if (sheetResolve) { sheetResolve(result); sheetResolve = null; }
+}
+
+document.getElementById('sheetConfirm').addEventListener('click', () => closeSheet(true));
+document.getElementById('sheetCancel').addEventListener('click', () => closeSheet(false));
+document.getElementById('overlay').addEventListener('click', () => closeSheet(false));
+
+// ── Feedback tátil ────────────────────────────────────────────
+
+function vibrate(pattern = [30]) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+// ── Chips de resumo (filtro rápido) ──────────────────────────
+
+document.querySelectorAll('.summary-chip[data-filter]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const filter = chip.dataset.filter;
+    currentFilter = filter;
+    document.querySelectorAll('.summary-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    // Sincronizar filter-tabs
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.filter === filter);
     });
+    renderItems();
+    vibrate([15]);
+  });
+});
 
-    // Renderizar os itens filtrados
-    filteredItems.forEach((item, index) => {
-        const row = document.createElement('tr');
+// ── Filter tabs ───────────────────────────────────────────────
 
-        // Definir a cor da linha com base no status do item
-        if (item.paid && item.delivered) {
-            row.classList.add('table-success'); // Verde para pago e entregue
-        } else if (item.personName !== '' && (!item.paid || !item.delivered)) {
-            row.classList.add('table-danger'); // Vermelho para atribuído mas não pago ou entregue
-        } else {
-            row.classList.add('table-secondary'); // Branco para disponível
-        }
-
-        const itemNameCell = document.createElement('td');
-        itemNameCell.textContent = item.itemName;
-        itemNameCell.classList.add('editable');
-        itemNameCell.addEventListener('click', () => makeEditable(itemNameCell, index, 'itemName'));
-        row.appendChild(itemNameCell);
-        
-        const personNameCell = document.createElement('td');
-        personNameCell.textContent = item.personName;
-        personNameCell.classList.add('editable');
-        personNameCell.addEventListener('click', () => makeEditable(personNameCell, index, 'personName'));
-        row.appendChild(personNameCell);
-        
-        const paidCell = document.createElement('td');
-        const paidIndicator = document.createElement('div');
-        paidIndicator.classList.add('status-indicator');
-        paidIndicator.classList.add(item.paid ? 'paid' : 'not-paid');
-        paidIndicator.addEventListener('click', () => toggleStatus(item.id, 'paid'));
-        paidCell.appendChild(paidIndicator);
-        row.appendChild(paidCell);
-        
-        const deliveredCell = document.createElement('td');
-        const deliveredIndicator = document.createElement('div');
-        deliveredIndicator.classList.add('status-indicator');
-        deliveredIndicator.classList.add(item.delivered ? 'delivered' : 'not-delivered');
-        deliveredIndicator.addEventListener('click', () => toggleStatus(item.id, 'delivered'));
-        deliveredCell.appendChild(deliveredIndicator);
-        row.appendChild(deliveredCell);
-        
-        const actionsCell = document.createElement('td');
-        const deleteButton = document.createElement('button');
-        deleteButton.classList.add('btn', 'btn-danger', 'btn-sm', 'ml-2');
-        deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
-        deleteButton.addEventListener('click', () => deleteItem(index));
-        
-        actionsCell.appendChild(deleteButton);
-        row.appendChild(actionsCell);
-        
-        itemsTableBody.appendChild(row);
+document.querySelectorAll('.filter-tab[data-filter]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const filter = tab.dataset.filter;
+    currentFilter = filter;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    // Sincronizar chips
+    document.querySelectorAll('.summary-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.filter === filter);
     });
-    updateValueSummary();
-}
-
-
-// Função para adicionar um novo item
-document.getElementById('itemForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-
-    const itemName = document.getElementById('itemName').value.trim();
-    const itemQuantity = parseInt(document.getElementById('itemQuantity').value.trim(), 10);
-    const itemPrice = parseFloat(document.getElementById('itemPrice').value.trim());
-
-    if (itemName && itemQuantity > 0) {
-        let items = JSON.parse(localStorage.getItem('items')) || [];
-        for (let i = 0; i < itemQuantity; i++) {
-            items.push({
-                itemName: itemName,
-                personName: '',
-                paid: false,
-                delivered: false,
-                price: itemPrice
-            });
-        }
-        localStorage.setItem('items', JSON.stringify(items));
-        loadItems();
-        document.getElementById('itemName').value = '';
-        document.getElementById('itemQuantity').value = '';
-        document.getElementById('itemPrice').value = '';
-    }
+    renderItems();
+  });
 });
 
-// Função para editar um campo específico
-function updateItem(index, field, value) {
-    const items = JSON.parse(localStorage.getItem('items')) || [];
-    items[index][field] = value.trim();
-    localStorage.setItem('items', JSON.stringify(items));
-    loadItems();
-}
+// ── Busca ─────────────────────────────────────────────────────
 
-// Função para tornar o campo editável
-function makeEditable(cell, index, field) {
-    const currentValue = cell.textContent;
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = currentValue;
-    input.classList.add('form-control', 'edit-input');
-    cell.innerHTML = '';
-    cell.appendChild(input);
-
-    input.addEventListener('blur', () => {
-        const newValue = input.value.trim();
-        updateItem(index, field, newValue);
-    });
-
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            input.blur();
-        }
-    });
-
-    input.focus();
-}
-
-// Função para alternar o status de um item (pago ou entregue)
-function toggleStatus(index, status) {
-    const items = JSON.parse(localStorage.getItem('items')) || [];
-    items[index][status] = !items[index][status];
-    localStorage.setItem('items', JSON.stringify(items));
-    loadItems('all', currentSearchText);
-}
-
-
-// Função para excluir um item
-function deleteItem(index) {
-    let items = JSON.parse(localStorage.getItem('items')) || [];
-    items.splice(index, 1);
-    localStorage.setItem('items', JSON.stringify(items));
-    loadItems();
-}
-
-// Função para excluir todos os itens
-document.getElementById('clearAll').addEventListener('click', function() {
-    if (confirm("Deseja excluir todos os itens?")) {
-            localStorage.removeItem('items');
-            loadItems();
-            populateItemDropdown()
-    }
-});
-// Função para excluir todos os itens com confirmação e salvar no IndexedDB
-document.getElementById('saveHistory').addEventListener('click', function() {
-    if (confirm("Deseja excluir todos os itens e salvar no histórico?")) {
-        const items = JSON.parse(localStorage.getItem('items')) || [];
-        let transaction = db.transaction(["sales"], "readwrite");
-        let objectStore = transaction.objectStore("sales");
-        let currentDate = new Date().toISOString().split('T')[0];
-
-        items.forEach(item => {
-            let saleRecord = {
-                itemName: item.itemName,
-                itemQuantity: 1,
-                itemPrice: item.price,
-                personName: item.personName,
-                paid: item.paid,
-                delivered: item.delivered,
-                date: currentDate
-            };
-            objectStore.add(saleRecord);
-        });
-
-        transaction.oncomplete = function() {
-            console.log("Itens salvos no histórico.");
-            localStorage.removeItem('items');
-            loadItems();
-            populateItemDropdown()
-
-        };
-
-        transaction.onerror = function(event) {
-            console.log("Erro ao salvar no IndexedDB:", event);
-        };
-    }
+document.getElementById('searchInput').addEventListener('input', function () {
+  currentSearch = this.value.trim();
+  renderItems();
 });
 
-// Função para atualizar o resumo de valores
-function updateValueSummary() {
-    const items = JSON.parse(localStorage.getItem('items')) || [];
-    
-    let totalValueToReceive = items.reduce((sum, item) => sum + item.price, 0);
-    let totalValueReceived = items.filter(item => item.paid).reduce((sum, item) => sum + item.price, 0);
-    let totalValuePending = items.filter(item => !item.paid).reduce((sum, item) => sum + item.price, 0);
+// ── Accordions (card-header toggle) ──────────────────────────
 
-    document.getElementById('totalValueToReceive').textContent = totalValueToReceive.toFixed(2);
-    document.getElementById('totalValueReceived').textContent = totalValueReceived.toFixed(2);
-    document.getElementById('totalValuePending').textContent = totalValuePending.toFixed(2);
-}
+document.querySelectorAll('.card-header').forEach(header => {
+  const bodyId = header.id.replace('toggle', '').replace(/^./, m => m.toLowerCase()) + 'Body';
+  const chevronId = header.id.replace('toggle', '').replace(/^./, m => m.toLowerCase()) + 'Chevron';
+  const body = document.getElementById(bodyId);
+  const chevron = document.getElementById(chevronId);
 
-// Inicializar a lista ao carregar a página
-window.addEventListener('load', () => {
-    loadItems();
-    updateValueSummary();
-});
+  if (!body) return;
 
-document.querySelectorAll('.summary-item button').forEach(button => {
-    button.addEventListener('click', function() {
-        // Alternar estado do botão
-        if (button.classList.contains('active')) {
-            button.classList.remove('active');
-            button.classList.add('inactive');
-            filterItems('all'); // Quando desativado, mostra todos os itens
-        } else {
-            // Desativar todos os botões primeiro
-            document.querySelectorAll('.summary-item button').forEach(btn => {
-                btn.classList.remove('active');
-                btn.classList.add('inactive');
-            });
-
-            button.classList.remove('inactive');
-            button.classList.add('active');
-
-            // Aplicar filtro baseado no data-filter do botão
-            const filter = button.getAttribute('data-filter');
-            filterItems(filter);
-        }
-    });
-});
-
-// Função para filtrar os itens com base no critério selecionado
-function filterItems(filter) {
-    if (filter === 'all') {
-        document.querySelectorAll('.summary-item button').forEach(button => {
-            button.classList.remove('active');
-            button.classList.add('inactive');
-        });
+  header.addEventListener('click', () => {
+    const isOpen = !body.classList.contains('collapsed');
+    if (isOpen) {
+      body.classList.add('collapsed');
+      chevron && chevron.classList.remove('open');
+      header.setAttribute('aria-expanded', 'false');
     } else {
-        const buttons = document.querySelectorAll('.summary-item button');
-        buttons.forEach(button => {
-            if (button.getAttribute('data-filter') !== filter) {
-                button.classList.remove('active');
-                button.classList.add('inactive');
-            } else {
-                button.classList.remove('inactive');
-                button.classList.add('active');
-            }
-        });
+      body.classList.remove('collapsed');
+      chevron && chevron.classList.add('open');
+      header.setAttribute('aria-expanded', 'true');
     }
+  });
+});
 
-    // Aplicar a lógica de filtragem dos itens como antes
-    loadItems(filter);
+// ── Controle de quantidade (+/−) ──────────────────────────────
+
+document.getElementById('qtyMinus').addEventListener('click', () => {
+  if (currentQty > 1) {
+    currentQty--;
+    document.getElementById('qtyDisplay').textContent = currentQty;
+    document.getElementById('itemQuantityInput').value = currentQty;
+    vibrate([10]);
+  }
+});
+
+document.getElementById('qtyPlus').addEventListener('click', () => {
+  currentQty++;
+  document.getElementById('qtyDisplay').textContent = currentQty;
+  document.getElementById('itemQuantityInput').value = currentQty;
+  vibrate([10]);
+});
+
+// ── Adicionar produto ao estoque ──────────────────────────────
+
+document.getElementById('btnAddProduct').addEventListener('click', function () {
+  const itemName = document.getElementById('itemName').value.trim();
+  const itemQuantity = parseInt(document.getElementById('itemQuantity').value, 10);
+  const itemPrice = parseFloat(document.getElementById('itemPrice').value);
+
+  if (!itemName || !itemQuantity || itemQuantity < 1 || isNaN(itemPrice) || itemPrice < 0) {
+    showToast('Preencha nome, quantidade e preço corretamente.', 'error');
+    vibrate([50, 30, 50]);
+    return;
+  }
+
+  const items = getItems();
+  for (let i = 0; i < itemQuantity; i++) {
+    items.push({
+      id: Date.now() + i,
+      itemName,
+      personName: '',
+      paid: false,
+      delivered: false,
+      price: itemPrice,
+    });
+  }
+  setItems(items);
+
+  document.getElementById('itemName').value = '';
+  document.getElementById('itemQuantity').value = '';
+  document.getElementById('itemPrice').value = '';
+
+  // Fechar card após adicionar
+  const body = document.getElementById('produtoBody');
+  const chevron = document.getElementById('produtoChevron');
+  body.classList.add('collapsed');
+  if (chevron) chevron.classList.remove('open');
+
+  populateItemDropdown();
+  renderItems();
+  showToast(`${itemQuantity}x "${itemName}" adicionado ao estoque!`, 'success');
+  vibrate([30]);
+});
+
+// ── Registrar venda ───────────────────────────────────────────
+
+document.getElementById('addItemButton').addEventListener('click', function () {
+  const itemName = document.getElementById('itemDropdown').value;
+  const personName = document.getElementById('personNameInput').value.trim();
+  const itemQuantity = parseInt(document.getElementById('itemQuantityInput').value, 10) || 1;
+  const paid = document.getElementById('paidCheckbox').checked;
+  const delivered = document.getElementById('deliveredCheckbox').checked;
+
+  if (!itemName) {
+    showToast('Selecione um produto.', 'error');
+    return;
+  }
+  if (!personName) {
+    showToast('Informe o nome da pessoa.', 'error');
+    return;
+  }
+
+  let items = getItems();
+  let count = 0;
+
+  for (let i = 0; i < items.length && count < itemQuantity; i++) {
+    if (items[i].itemName === itemName && !items[i].personName) {
+      items[i].personName = personName;
+      items[i].paid = paid;
+      items[i].delivered = delivered;
+      count++;
+    }
+  }
+
+  if (count === 0) {
+    showToast('Nenhuma unidade disponível deste produto.', 'warning');
+    return;
+  }
+
+  setItems(items);
+  addPersonName(personName);
+  populatePersonDatalist();
+
+  // Reset form
+  document.getElementById('personNameInput').value = '';
+  document.getElementById('paidCheckbox').checked = false;
+  document.getElementById('deliveredCheckbox').checked = false;
+  currentQty = 1;
+  document.getElementById('qtyDisplay').textContent = '1';
+  document.getElementById('itemQuantityInput').value = '1';
+
+  populateItemDropdown();
+  renderItems();
+  showToast(`Venda de ${count}x "${itemName}" para ${personName} registrada!`, 'success');
+  vibrate([30, 20, 30]);
+});
+
+// ── Atualizar datalist de nomes ───────────────────────────────
+
+function populatePersonDatalist() {
+  const dl = document.getElementById('personNamesList');
+  if (!dl) return;
+  const names = getPersonNames();
+  dl.innerHTML = names.map(n => `<option value="${n}">`).join('');
 }
 
-// Toggle para o resumo dos itens
-document.getElementById('toggleSummary').addEventListener('click', function() {
-    const summary = document.getElementById('summary');
-    const summaryIcon = document.getElementById('summaryIcon');
-    if (summary.classList.contains('collapse')) {
-        summary.classList.remove('collapse');
-        summary.classList.add('show');
-        summaryIcon.classList.add('rotate');
-    } else {
-        summary.classList.remove('show');
-        summary.classList.add('collapse');
-        summaryIcon.classList.remove('rotate');
-    }
-});
-
-// Toggle para o resumo de valores
-document.getElementById('toggleValueSummary').addEventListener('click', function() {
-    const valueSummary = document.getElementById('valueSummary');
-    const valueSummaryIcon = document.getElementById('valueSummaryIcon');
-    if (valueSummary.classList.contains('collapse')) {
-        valueSummary.classList.remove('collapse');
-        valueSummary.classList.add('show');
-        valueSummaryIcon.classList.add('rotate');
-    } else {
-        valueSummary.classList.remove('show');
-        valueSummary.classList.add('collapse');
-        valueSummaryIcon.classList.remove('rotate');
-    }
-});
+// ── Popular dropdown de produtos ──────────────────────────────
 
 function populateItemDropdown() {
-    const items = JSON.parse(localStorage.getItem('items')) || [];
-    const itemDropdown = document.getElementById('itemDropdown');
-    
+  const items = getItems();
+  const dropdown = document.getElementById('itemDropdown');
+  const currentVal = dropdown.value;
 
-    // Contagem de itens disponíveis e repetidos
-    const itemCounts = items.reduce((acc, item) => {
-        if (!acc[item.itemName]) {
-            acc[item.itemName] = { total: 0, available: 0 };
-        }
-        acc[item.itemName].total += 1;
-        if (!item.personName) {
-            acc[item.itemName].available += 1;
-        }
-        return acc;
-    }, {});
+  const counts = items.reduce((acc, item) => {
+    if (!acc[item.itemName]) acc[item.itemName] = { total: 0, available: 0 };
+    acc[item.itemName].total++;
+    if (!item.personName) acc[item.itemName].available++;
+    return acc;
+  }, {});
 
-    itemDropdown.innerHTML = ''; // Limpar o dropdown antes de preencher
+  dropdown.innerHTML = '<option value="">Selecione um produto...</option>';
 
-    // Adicionar opções ao dropdown com o nome do item e os totais
-    Object.keys(itemCounts).forEach(itemName => {
-        const option = document.createElement('option');
-        option.value = itemName;
-        const { available } = itemCounts[itemName];
-        option.textContent = `${itemName} (${available})`;
+  Object.entries(counts).forEach(([name, { available, total }]) => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = `${name} (${available} disponível de ${total})`;
+    if (available === 0) opt.disabled = true;
+    dropdown.appendChild(opt);
+  });
 
-        // Aplicar cores conforme a disponibilidade
-        if (available === 0) {
-            option.disabled = true;
-            option.style.background = 'red';  // Vermelho para 0 disponíveis
-            option.style.color = 'white';  
-        } 
-
-        itemDropdown.appendChild(option);
-    });
+  // Restaurar seleção se ainda válida
+  if (currentVal && counts[currentVal]?.available > 0) dropdown.value = currentVal;
 }
 
+// ── Alternar status (pago/entregue) ───────────────────────────
 
+function toggleStatus(itemId, field) {
+  const items = getItems();
+  const idx = items.findIndex(i => i.id === itemId);
+  if (idx === -1) return;
+  items[idx][field] = !items[idx][field];
+  setItems(items);
+  renderItems();
+  vibrate([20]);
 
-document.getElementById('addItemButton').addEventListener('click', function() {
-    const itemName = document.getElementById('itemDropdown').value;
-    const personName = document.getElementById('personNameInput').value.trim();
-    let itemQuantity = parseInt(document.getElementById('itemQuantityInput').value.trim(), 10);
-    const paid = document.getElementById('paidCheckbox').checked;
-    const delivered = document.getElementById('deliveredCheckbox').checked;
+  const label = field === 'paid' ? (items[idx][field] ? 'Marcado como Pago' : 'Marcado como Pendente') :
+                                   (items[idx][field] ? 'Marcado como Entregue' : 'Aguardando Entrega');
+  showToast(label, items[idx][field] ? 'success' : 'warning');
+}
 
-    if (itemName && personName && itemQuantity > 0) {
-        let items = JSON.parse(localStorage.getItem('items')) || [];
+// ── Excluir item ──────────────────────────────────────────────
 
-        // Atualiza os itens com as informações inseridas
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].itemName === itemName && !items[i].personName) {
-                items[i].personName = personName;
-                items[i].paid = paid;
-                items[i].delivered = delivered;
-                itemQuantity--;
+async function deleteItem(itemId) {
+  const confirmed = await openConfirmSheet(
+    'Excluir registro?',
+    'Esta ação não pode ser desfeita.'
+  );
+  if (!confirmed) return;
 
-                if (itemQuantity === 0) break; // Sai do loop quando a quantidade desejada for atingida
-            }
-        }
+  const items = getItems().filter(i => i.id !== itemId);
+  setItems(items);
+  populateItemDropdown();
+  renderItems();
+  showToast('Registro removido.', 'info');
+}
 
-        localStorage.setItem('items', JSON.stringify(items));
-        loadItems(); // Atualiza a tabela com as novas informações
-        updateValueSummary(); // Atualiza o resumo de valores
+// ── Calcular status visual do card ────────────────────────────
 
-        // Limpar os campos após a adição
-        document.getElementById('personNameInput').value = '';
-        document.getElementById('itemQuantityInput').value = '';
-        document.getElementById('paidCheckbox').checked = false;
-        document.getElementById('deliveredCheckbox').checked = false;
-        populateItemDropdown()
-    } else {
-        alert("Por favor, preencha todos os campos corretamente.");
+function getCardStatus(item) {
+  if (!item.personName) return 'free';
+  if (item.paid && item.delivered) return 'ok';
+  if (!item.paid) return 'pending';
+  return 'partial'; // pago mas não entregue
+}
+
+// ── Renderizar lista de itens ─────────────────────────────────
+
+function renderItems() {
+  const items = getItems();
+  const body = document.getElementById('itemsTableBody');
+
+  // Atualizar contadores dos chips
+  const total = items.length;
+  const available = items.filter(i => !i.personName).length;
+  const paid = items.filter(i => i.paid && i.personName).length;
+  const unpaid = items.filter(i => !i.paid && i.personName).length;
+  const undelivered = items.filter(i => !i.delivered && i.personName).length;
+
+  document.getElementById('totalItemsCount').textContent = total;
+  document.getElementById('availableItemsCount').textContent = available;
+  document.getElementById('paidPeopleCount').textContent = paid;
+  document.getElementById('unpaidPeopleCount').textContent = unpaid;
+  document.getElementById('undeliveredPeopleCount').textContent = undelivered;
+
+  // Atualizar resumo financeiro
+  const totalVal = items.reduce((s, i) => s + (i.price || 0), 0);
+  const receivedVal = items.filter(i => i.paid).reduce((s, i) => s + (i.price || 0), 0);
+  const pendingVal = totalVal - receivedVal;
+  document.getElementById('totalValueToReceive').textContent = totalVal.toFixed(2).replace('.', ',');
+  document.getElementById('totalValueReceived').textContent = receivedVal.toFixed(2).replace('.', ',');
+  document.getElementById('totalValuePending').textContent = pendingVal.toFixed(2).replace('.', ',');
+
+  // Filtrar
+  const filtered = items.filter(item => {
+    let match = true;
+    if (currentFilter === 'available') match = !item.personName;
+    else if (currentFilter === 'paid') match = item.paid && !!item.personName;
+    else if (currentFilter === 'unpaid') match = !item.paid && !!item.personName;
+    else if (currentFilter === 'undelivered') match = !item.delivered && !!item.personName;
+
+    if (currentSearch) {
+      const q = currentSearch.toLowerCase();
+      match = match && (
+        item.itemName.toLowerCase().includes(q) ||
+        item.personName.toLowerCase().includes(q)
+      );
     }
-});
+    return match;
+  });
 
+  if (filtered.length === 0) {
+    body.innerHTML = `
+      <div class="items-empty">
+        <div class="items-empty__icon"><i class="fas fa-box-open"></i></div>
+        <div class="items-empty__text">Nenhum item encontrado</div>
+      </div>`;
+    return;
+  }
 
-function filterTable(searchText) {
-    currentSearchText = searchText; // Armazena o filtro atual
-    loadItems('all', currentSearchText);
+  body.innerHTML = '';
+
+  filtered.forEach(item => {
+    const status = getCardStatus(item);
+    const statusClass = { ok: 'status-ok', pending: 'status-pending', partial: 'status-partial', free: 'status-free' }[status];
+
+    const card = document.createElement('div');
+    card.className = `item-card ${statusClass}`;
+    card.dataset.id = item.id;
+
+    const paidBadgeClass = item.paid ? 'badge-paid' : 'badge-unpaid';
+    const paidIcon = item.paid ? 'fa-check' : 'fa-times';
+    const paidLabel = item.paid ? 'Pago' : 'Pendente';
+
+    const delivBadgeClass = item.delivered ? 'badge-delivered' : 'badge-undelivered';
+    const delivIcon = item.delivered ? 'fa-box' : 'fa-clock';
+    const delivLabel = item.delivered ? 'Entregue' : 'Aguardando';
+
+    if (!item.personName) {
+      // Item disponível — sem nome
+      card.innerHTML = `
+        <div class="item-card__info">
+          <div class="item-card__name" style="color:var(--clr-text-muted)">Disponível</div>
+          <div class="item-card__product">${item.itemName}</div>
+          <div class="item-card__price">R$ ${(item.price || 0).toFixed(2).replace('.', ',')}</div>
+        </div>
+        <div class="item-card__badges">
+          <span class="badge badge-free"><i class="fas fa-tag"></i> Livre</span>
+        </div>
+        <div class="item-card__actions">
+          <button class="btn-delete" data-id="${item.id}" aria-label="Excluir item">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>`;
+    } else {
+      card.innerHTML = `
+        <div class="item-card__info">
+          <div class="item-card__name">${item.personName}</div>
+          <div class="item-card__product">${item.itemName}</div>
+          <div class="item-card__price">R$ ${(item.price || 0).toFixed(2).replace('.', ',')}</div>
+        </div>
+        <div class="item-card__badges">
+          <button class="badge ${paidBadgeClass}" data-id="${item.id}" data-field="paid" aria-label="Alternar pagamento">
+            <i class="fas ${paidIcon}"></i> ${paidLabel}
+          </button>
+          <button class="badge ${delivBadgeClass}" data-id="${item.id}" data-field="delivered" aria-label="Alternar entrega">
+            <i class="fas ${delivIcon}"></i> ${delivLabel}
+          </button>
+        </div>
+        <div class="item-card__actions">
+          <button class="btn-delete" data-id="${item.id}" aria-label="Excluir item">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>`;
+    }
+
+    body.appendChild(card);
+  });
+
+  // Event delegation — badges de status
+  body.querySelectorAll('.badge[data-field]').forEach(badge => {
+    badge.addEventListener('click', () => {
+      toggleStatus(Number(badge.dataset.id), badge.dataset.field);
+    });
+  });
+
+  // Event delegation — botões de deletar
+  body.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', () => {
+      deleteItem(Number(btn.dataset.id));
+    });
+  });
 }
 
-// Evento de pesquisa na tabela
-document.getElementById('searchInput').addEventListener('input', function() {
-    const searchText = this.value.trim();
-    filterTable(searchText);
+// ── Salvar histórico ──────────────────────────────────────────
+
+document.getElementById('saveHistory').addEventListener('click', async function () {
+  const items = getItems();
+  if (items.length === 0) {
+    showToast('Não há itens para salvar.', 'warning');
+    return;
+  }
+
+  const confirmed = await openConfirmSheet(
+    'Salvar no Histórico?',
+    `${items.length} itens serão salvos e a lista atual será limpa.`
+  );
+  if (!confirmed) return;
+
+  try {
+    await dbReady;
+    await saveSession(items);
+    localStorage.removeItem('items');
+    populateItemDropdown();
+    renderItems();
+    showToast('Histórico salvo com sucesso!', 'success');
+    vibrate([30, 20, 60]);
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao salvar histórico.', 'error');
+  }
 });
 
+// ── Limpar tudo ───────────────────────────────────────────────
 
+document.getElementById('clearAll').addEventListener('click', async function () {
+  const items = getItems();
+  if (items.length === 0) {
+    showToast('Lista já está vazia.', 'info');
+    return;
+  }
 
-// Chame essa função quando a página carregar
+  const confirmed = await openConfirmSheet(
+    'Excluir todos os itens?',
+    'A lista atual será apagada permanentemente (sem salvar no histórico).'
+  );
+  if (!confirmed) return;
+
+  localStorage.removeItem('items');
+  populateItemDropdown();
+  renderItems();
+  showToast('Lista limpa.', 'info');
+});
+
+// ── Gerar PDF da tela atual ───────────────────────────────────
+
+document.getElementById('btnGeneratePDF').addEventListener('click', async function () {
+  const items = getItems();
+  if (items.length === 0) {
+    showToast('Não há itens para gerar relatório.', 'warning');
+    return;
+  }
+
+  // Apenas itens com pessoa (vendas registradas)
+  const vendas = items.filter(i => i.personName);
+  if (vendas.length === 0) {
+    showToast('Nenhuma venda registrada ainda.', 'warning');
+    return;
+  }
+
+  try {
+    showToast('Gerando PDF...', 'info');
+    const today = new Date().toLocaleDateString('pt-BR');
+    await generatePDF({
+      title: `Relatório de Vendas — ${today}`,
+      items: vendas.map(i => ({ ...i, itemPrice: i.price })),
+      filename: `relatorio-${new Date().toISOString().split('T')[0]}.pdf`,
+    });
+    showToast('PDF gerado com sucesso!', 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao gerar PDF.', 'error');
+  }
+});
+
+// ── Inicialização ─────────────────────────────────────────────
+
 window.addEventListener('load', () => {
-    populateItemDropdown();
-    loadItems('all', currentSearchText);
+  populateItemDropdown();
+  populatePersonDatalist();
+  renderItems();
 });

@@ -1,72 +1,178 @@
-// Abrir ou criar um banco de dados
+/**
+ * indexedDB.js — Banco de dados unificado (IndexedDB)
+ * Schema: objectStore "sales" com sessionId para agrupamento por sessão
+ */
+
 let db;
-let request = indexedDB.open("SalesHistoryDB", 1);
+const DB_NAME = "SalesHistoryDB";
+const DB_VERSION = 2; // Incrementado para novo schema com sessionId
 
-request.onupgradeneeded = function(event) {
-    db = event.target.result;
-    let objectStore = db.createObjectStore("sales", { keyPath: "id", autoIncrement: true });
-    objectStore.createIndex("date", "date", { unique: false });
-};
+const dbReady = new Promise((resolve, reject) => {
+  const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-request.onsuccess = function(event) {
-    db = event.target.result;
-};
+  request.onupgradeneeded = function (event) {
+    const database = event.target.result;
 
-request.onerror = function(event) {
-    console.log("Erro ao abrir o IndexedDB:", event);
-};
+    // Remover store antigo se existir
+    if (database.objectStoreNames.contains("sales")) {
+      database.deleteObjectStore("sales");
+    }
 
-// Função para adicionar uma venda
-function addSale(sale) {
-    let transaction = db.transaction(["sales"], "readwrite");
-    let objectStore = transaction.objectStore("sales");
-    let request = objectStore.add(sale);
-    
-    request.onsuccess = function(event) {
-        console.log("Venda adicionada ao histórico:", event.target.result);
-    };
-    
-    request.onerror = function(event) {
-        console.log("Erro ao adicionar a venda:", event);
-    };
-}
-
-// Função para salvar todas as vendas atuais no IndexedDB
-function saveAllSalesToIndexedDB() {
-    const items = JSON.parse(localStorage.getItem('items')) || [];
-    const saleDate = new Date().toISOString().split('T')[0];
-    
-    items.forEach(item => {
-        const sale = {
-            itemName: item.itemName,
-            itemQuantity: item.itemQuantity || 1,
-            itemPrice: item.price,
-            personName: item.personName,
-            paid: item.paid,
-            delivered: item.delivered,
-            date: saleDate
-        };
-        addSale(sale);
+    const objectStore = database.createObjectStore("sales", {
+      keyPath: "id",
+      autoIncrement: true,
     });
-}
 
-// Função para carregar as vendas
-function loadSales() {
-    let transaction = db.transaction(["sales"], "readonly");
-    let objectStore = transaction.objectStore("sales");
-    
-    objectStore.openCursor().onsuccess = function(event) {
-        let cursor = event.target.result;
-        if (cursor) {
-            console.log("Venda:", cursor.value);
-            cursor.continue();
-        } else {
-            console.log("Não há mais vendas.");
-        }
-    };
-}
+    objectStore.createIndex("date", "date", { unique: false });
+    objectStore.createIndex("sessionId", "sessionId", { unique: false });
+    objectStore.createIndex("personName", "personName", { unique: false });
+  };
 
-// Chamar a função para carregar as vendas quando a página for carregada
-window.addEventListener('load', function() {
-    loadSales();
+  request.onsuccess = function (event) {
+    db = event.target.result;
+    resolve(db);
+  };
+
+  request.onerror = function (event) {
+    console.error("Erro ao abrir IndexedDB:", event.target.error);
+    reject(event.target.error);
+  };
 });
+
+/**
+ * Salva uma sessão (array de itens) no histórico
+ * @param {Array} items - Itens do localStorage
+ * @param {string} [label] - Nome opcional da sessão
+ * @returns {Promise<string>} sessionId gerado
+ */
+async function saveSession(items, label = "") {
+  await dbReady;
+  const sessionId = Date.now().toString();
+  const now = new Date();
+  const sessionDate = now.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["sales"], "readwrite");
+    const objectStore = transaction.objectStore("sales");
+
+    items.forEach((item) => {
+      objectStore.add({
+        itemName: item.itemName,
+        itemQuantity: 1,
+        itemPrice: item.price,
+        personName: item.personName || "",
+        paid: item.paid || false,
+        delivered: item.delivered || false,
+        date: now.toISOString().split("T")[0],
+        sessionId: sessionId,
+        sessionDate: sessionDate,
+        sessionLabel: label,
+      });
+    });
+
+    transaction.oncomplete = () => resolve(sessionId);
+    transaction.onerror = (e) => reject(e.target.error);
+  });
+}
+
+/**
+ * Carrega todas as sessões agrupadas por sessionId
+ * @returns {Promise<Object>} Mapa sessionId → { meta, items[] }
+ */
+async function loadSessions() {
+  await dbReady;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["sales"], "readonly");
+    const objectStore = transaction.objectStore("sales");
+    const request = objectStore.openCursor();
+    const sessionsMap = {};
+
+    request.onsuccess = function (event) {
+      const cursor = event.target.result;
+      if (cursor) {
+        const sale = cursor.value;
+        const sid = sale.sessionId || "legacy";
+
+        if (!sessionsMap[sid]) {
+          sessionsMap[sid] = {
+            sessionId: sid,
+            sessionDate: sale.sessionDate || sale.date || sid,
+            sessionLabel: sale.sessionLabel || "",
+            items: [],
+          };
+        }
+        sessionsMap[sid].items.push(sale);
+        cursor.continue();
+      } else {
+        // Ordenar por sessionId decrescente (mais recente primeiro)
+        const sorted = Object.values(sessionsMap).sort(
+          (a, b) => Number(b.sessionId) - Number(a.sessionId)
+        );
+        resolve(sorted);
+      }
+    };
+
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+/**
+ * Carrega itens de uma sessão específica
+ * @param {string} sessionId
+ * @returns {Promise<Array>}
+ */
+async function loadSessionById(sessionId) {
+  await dbReady;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["sales"], "readonly");
+    const index = transaction.objectStore("sales").index("sessionId");
+    const request = index.getAll(sessionId);
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+/**
+ * Deleta todos os registros de uma sessão
+ * @param {string} sessionId
+ * @returns {Promise<void>}
+ */
+async function deleteSession(sessionId) {
+  await dbReady;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["sales"], "readwrite");
+    const objectStore = transaction.objectStore("sales");
+    const index = objectStore.index("sessionId");
+    const request = index.openCursor(IDBKeyRange.only(sessionId));
+
+    request.onsuccess = function (event) {
+      const cursor = event.target.result;
+      if (cursor) {
+        objectStore.delete(cursor.primaryKey);
+        cursor.continue();
+      }
+    };
+
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = (e) => reject(e.target.error);
+  });
+}
+
+/**
+ * Conta o total de sessões armazenadas
+ * @returns {Promise<number>}
+ */
+async function countSessions() {
+  const sessions = await loadSessions();
+  return sessions.length;
+}

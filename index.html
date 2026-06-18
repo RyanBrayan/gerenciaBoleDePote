@@ -1,231 +1,247 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Gerencie vendas de bole de pote de forma rápida e prática. Ideal para cantinas e eventos." />
+    <meta name="theme-color" content="#ea580c" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Gerenc. Itens" />
     <title>Gerenciamento de Itens</title>
-    <link
-      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Open+Sans:wght@400;600&display=swap"
-    />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="./src/css/style.css" />
   </head>
   <body>
-    <div class="container">
-      <div class="item-management">
-        <h1 class="title">Gerenciamento de Itens</h1>
-        <form id="itemForm" class="form-inline mb-3">
-          <div class="form-group mx-sm-3 mb-2">
-            <label for="itemName" class="sr-only">Nome do Item</label>
-            <input
-              type="text"
-              class="form-control"
-              id="itemName"
-              placeholder="Nome do Item"
-              required
-            />
-          </div>
-          <div class="form-group mx-sm-3 mb-2">
-            <label for="itemQuantity" class="sr-only">Quantidade</label>
-            <input
-              type="number"
-              class="form-control"
-              id="itemQuantity"
-              placeholder="Quantidade"
-              required
-              min="1"
-            />
-          </div>
-          <div class="form-group mx-sm-3 mb-2">
-            <label for="itemPrice" class="sr-only">Preço</label>
-            <input
-              type="number"
-              class="form-control"
-              id="itemPrice"
-              placeholder="Preço"
-              required
-              min="0"
-              step="0.01"
-            />
-          </div>
-          <button type="submit" class="btn btn-primary mb-2">
-            Adicionar Item
-          </button>
-        </form>
-      </div>
-      <div class="mb-3">
-        <h5 id="toggleSummary" class="clickable">
-          <i class="fas fa-info-circle mr-2"></i>Resumo dos Itens
-          <i id="summaryIcon" class="fas fa-chevron-down ml-2"></i>
-        </h5>
-        <div id="summary" class="collapse">
-          <div class="summary-card">
-            <div class="summary-item">
-              <div>
-                <i class="fas fa-box mr-2"></i>
-                Total de Itens: <span id="totalItemsCount">0</span>
-              </div>
-            </div>
-            <div class="summary-item">
-              <div>
-                <i class="fas fa-box-open mr-2"></i>
-                Itens Disponíveis: <span id="availableItemsCount">0</span>
-              </div>
-              <button
-                class="btn btn-primary btn-sm ml-2 inactive"
-                data-filter="available"
-              >
-                Filtrar
-              </button>
-            </div>
-            <div class="summary-item">
-              <div>
-                <i class="fas fa-check-circle mr-2"></i>
-                Pessoas que Pagaram: <span id="paidPeopleCount">0</span>
-              </div>
-              <button
-                class="btn btn-primary btn-sm ml-2 inactive"
-                data-filter="paid"
-              >
-                Filtrar
-              </button>
-            </div>
-            <div class="summary-item">
-              <div>
-                <i class="fas fa-times-circle mr-2"></i>
-                Pessoas a Pagar: <span id="unpaidPeopleCount">0</span>
-              </div>
-              <button
-                class="btn btn-primary btn-sm ml-2 inactive"
-                data-filter="unpaid"
-              >
-                Filtrar
-              </button>
-            </div>
-            <div class="summary-item">
-              <div>
-                <i class="fas fa-truck mr-2"></i>
-                Pessoas que Faltam Entregar:
-                <span id="undeliveredPeopleCount">0</span>
-              </div>
-              <button
-                class="btn btn-primary btn-sm ml-2 inactive"
-                data-filter="undelivered"
-              >
-                Filtrar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div class="mb-3">
-        <h5 id="toggleValueSummary" class="clickable">
-          <i class="fas fa-dollar-sign mr-2"></i>Resumo de Valores
-          <i id="valueSummaryIcon" class="fas fa-chevron-down ml-2"></i>
-        </h5>
-        <div id="valueSummary" class="collapse">
-          <div class="summary-card">
-            <div class="summary-item">
-              <i class="fas fa-coins mr-2"></i>
-              Total: R$ <span id="totalValueToReceive">0.00</span>
-            </div>
-            <div class="summary-item">
-              <i class="fas fa-hand-holding-usd mr-2"></i>
-              Total Recebido: R$ <span id="totalValueReceived">0.00</span>
-            </div>
-            <div class="summary-item">
-              <i class="fas fa-money-bill-wave mr-2"></i>
-              Total a Receber: R$ <span id="totalValuePending">0.00</span>
-            </div>
-          </div>
-        </div>
+    <!-- ── HEADER ── -->
+    <header class="app-header">
+      <div class="app-header__logo">
+        <span class="app-header__logo-icon">📋</span>
+        <span class="app-header__title">Gerenciamento de Itens</span>
       </div>
-      <div id="addItemForm" class="mb-4">
-        <div class="form-row">
-          <div class="col-md-2 mb-2">
-            <select id="itemDropdown" class="form-control">
-              <!-- Opções serão adicionadas dinamicamente -->
-            </select>
-          </div>
-          <div class="col-md-2 mb-2">
-            <input type="text" id="personNameInput" class="form-control" placeholder="Nome da Pessoa">
-          </div>
-          <div class="col-md-2 mb-2">
-            <input type="number" id="itemQuantityInput" class="form-control" placeholder="Quantidade" min="1">
-          </div>
-          <div class="col-md-1 mb-2">
-            <input type="checkbox" id="paidCheckbox"> Pagou
-          </div>
-          <div class="col-md-2 mb-2">
-            <input type="checkbox" id="deliveredCheckbox"> Entregue
-          </div>
-          <div class="col-md-2 mb-2">
-            <button id="addItemButton" class="btn btn-primary">Adicionar</button>
-          </div>
-        </div>
+      <div class="app-header__actions">
+        <a href="./history.html" class="header-btn" id="btn-history">
+          <i class="fas fa-history"></i> Histórico
+        </a>
       </div>
-      
-      <div class="mt-5 d-flex flex justify-content-between">
-        <div>
-          <div class="color-legend">
-            <div class="legend-item">
-              <div class="status-indicator paid"></div>
-              Sem Pendências
-            </div>
-            <div class="legend-item">
-              <div class="status-indicator not-paid"></div>
-              Pendências de Pagamento
-            </div>
-            <div class="legend-item">
-              <div class="status-indicator not-delivered"></div>
-              Pendências de Entrega
-            </div>
-          </div>
-        </div>
-        <div>
-          <button id="clearAll" class="btn btn-danger mb-3">
-            Excluir Todos
-          </button>
-          <button id="saveHistory" class="btn btn-danger mb-3">
-            Salvar historico
-          </button>
-          <a href="./history.html" class="btn btn-secondary mb-3"
-            >Ver Histórico</a
-          >
-        </div>
+    </header>
+
+    <!-- ── TOAST CONTAINER ── -->
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+    <!-- ── OVERLAY / BOTTOM SHEET ── -->
+    <div class="overlay" id="overlay"></div>
+    <div class="bottom-sheet" id="confirmSheet" role="dialog" aria-modal="true">
+      <div class="bottom-sheet__handle"></div>
+      <p class="bottom-sheet__title" id="sheetTitle">Confirmar ação</p>
+      <p class="bottom-sheet__desc" id="sheetDesc"></p>
+      <div class="bottom-sheet__actions">
+        <button class="btn btn-danger btn-full" id="sheetConfirm">Confirmar</button>
+        <button class="btn btn-secondary btn-full" id="sheetCancel">Cancelar</button>
       </div>
-      <table class="table table-striped table-hover">
-        <thead class="thead-dark">
-          <tr>
-            <th>Nome do Item</th>
-            <th>Nome da Pessoa</th>
-            <th>Pagou?</th>
-            <th>Entregue?</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <div id="searchItemForm" class="mb-2">
-          <input type="text" id="searchInput" class="form-control" placeholder="Pesquisar item...">
-        </div>      
-        <tbody id="itemsTableBody">
-          <!-- Conteúdo gerado dinamicamente -->
-        </tbody>
-      </table>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script src="./src/script/index.js"></script>
+    <!-- ── CONTEÚDO PRINCIPAL ── -->
+    <main class="app-main" id="appMain">
+
+      <!-- RESUMO (chips deslizáveis) -->
+      <section aria-label="Resumo dos itens">
+        <div class="summary-scroll" id="summaryScroll">
+          <button class="summary-chip active" data-filter="all" id="chip-all">
+            <div class="summary-chip__label">Total</div>
+            <div class="summary-chip__value brand" id="totalItemsCount">0</div>
+            <div class="summary-chip__sub">itens</div>
+          </button>
+          <button class="summary-chip" data-filter="available" id="chip-available">
+            <div class="summary-chip__label">Disponível</div>
+            <div class="summary-chip__value" id="availableItemsCount">0</div>
+            <div class="summary-chip__sub">sem dono</div>
+          </button>
+          <button class="summary-chip" data-filter="paid" id="chip-paid">
+            <div class="summary-chip__label">Pagos</div>
+            <div class="summary-chip__value success" id="paidPeopleCount">0</div>
+            <div class="summary-chip__sub">pessoas</div>
+          </button>
+          <button class="summary-chip" data-filter="unpaid" id="chip-unpaid">
+            <div class="summary-chip__label">Pendente</div>
+            <div class="summary-chip__value danger" id="unpaidPeopleCount">0</div>
+            <div class="summary-chip__sub">a pagar</div>
+          </button>
+          <button class="summary-chip" data-filter="undelivered" id="chip-undelivered">
+            <div class="summary-chip__label">Entregar</div>
+            <div class="summary-chip__value warning" id="undeliveredPeopleCount">0</div>
+            <div class="summary-chip__sub">pendentes</div>
+          </button>
+        </div>
+      </section>
+
+      <!-- RESUMO FINANCEIRO -->
+      <div class="card" id="cardFinanceiro">
+        <div class="card-header" id="toggleFinanceiro" aria-expanded="false" role="button">
+          <span class="card-header__title">
+            <i class="fas fa-coins"></i> Resumo Financeiro
+          </span>
+          <i class="fas fa-chevron-down card-header__chevron" id="financeiroChevron"></i>
+        </div>
+        <div class="card-body collapsed" id="financeiroBody">
+          <div class="form-row">
+            <div style="text-align:center; padding: 12px; background: var(--clr-brand-xlight); border-radius: var(--radius-md);">
+              <div style="font-size:11px; font-weight:600; color:var(--clr-brand); text-transform:uppercase; letter-spacing:.5px;">Total</div>
+              <div style="font-size:22px; font-weight:800; color:var(--clr-brand);">R$ <span id="totalValueToReceive">0,00</span></div>
+            </div>
+            <div style="text-align:center; padding: 12px; background: var(--clr-success-bg); border-radius: var(--radius-md);">
+              <div style="font-size:11px; font-weight:600; color:var(--clr-success); text-transform:uppercase; letter-spacing:.5px;">Recebido</div>
+              <div style="font-size:22px; font-weight:800; color:var(--clr-success);">R$ <span id="totalValueReceived">0,00</span></div>
+            </div>
+            <div style="text-align:center; padding: 12px; background: var(--clr-danger-bg); border-radius: var(--radius-md);">
+              <div style="font-size:11px; font-weight:600; color:var(--clr-danger); text-transform:uppercase; letter-spacing:.5px;">A Receber</div>
+              <div style="font-size:22px; font-weight:800; color:var(--clr-danger);">R$ <span id="totalValuePending">0,00</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CADASTRAR PRODUTO (estoque) -->
+      <div class="card" id="cardProduto">
+        <div class="card-header" id="toggleProduto" aria-expanded="false" role="button">
+          <span class="card-header__title">
+            <i class="fas fa-plus-circle"></i> Novo Produto / Estoque
+          </span>
+          <i class="fas fa-chevron-down card-header__chevron" id="produtoChevron"></i>
+        </div>
+        <div class="card-body collapsed" id="produtoBody">
+          <div class="form-group">
+            <label class="form-label" for="itemName">Nome do Produto</label>
+            <input type="text" class="form-input" id="itemName" placeholder="Ex: Bole de Pote Tradicional" autocomplete="off" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="itemQuantity">Quantidade</label>
+              <input type="number" class="form-input" id="itemQuantity" placeholder="0" min="1" inputmode="numeric" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="itemPrice">Preço (R$)</label>
+              <input type="number" class="form-input" id="itemPrice" placeholder="0,00" min="0" step="0.01" inputmode="decimal" />
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" id="btnAddProduct">
+            <i class="fas fa-plus"></i> Adicionar ao Estoque
+          </button>
+        </div>
+      </div>
+
+      <!-- REGISTRAR VENDA -->
+      <div class="card" id="cardVenda">
+        <div class="card-header" id="toggleVenda" aria-expanded="true" role="button">
+          <span class="card-header__title">
+            <i class="fas fa-shopping-cart"></i> Registrar Venda
+          </span>
+          <i class="fas fa-chevron-up card-header__chevron open" id="vendaChevron"></i>
+        </div>
+        <div class="card-body" id="vendaBody">
+          <div class="form-group">
+            <label class="form-label" for="itemDropdown">Produto</label>
+            <div class="form-select-wrap">
+              <select class="form-input" id="itemDropdown">
+                <option value="">Selecione um produto...</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="personNameInput">Nome da Pessoa</label>
+            <input type="text" class="form-input" id="personNameInput"
+              placeholder="Nome de quem comprou"
+              autocomplete="off"
+              list="personNamesList" />
+            <datalist id="personNamesList"></datalist>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quantidade</label>
+            <div class="qty-control">
+              <button class="qty-btn" id="qtyMinus" aria-label="Diminuir quantidade" type="button">−</button>
+              <div class="qty-display" id="qtyDisplay">1</div>
+              <button class="qty-btn" id="qtyPlus" aria-label="Aumentar quantidade" type="button">+</button>
+            </div>
+            <input type="hidden" id="itemQuantityInput" value="1" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <div class="toggle-group">
+              <div class="toggle-item">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="paidCheckbox" />
+                  <span class="toggle-track"></span>
+                </label>
+                <span class="toggle-label">Pagou</span>
+              </div>
+              <div class="toggle-item">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="deliveredCheckbox" />
+                  <span class="toggle-track"></span>
+                </label>
+                <span class="toggle-label">Entregue</span>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" id="addItemButton">
+            <i class="fas fa-check"></i> Registrar Venda
+          </button>
+        </div>
+      </div>
+
+      <!-- LISTA DE ITENS -->
+      <section>
+        <!-- Busca + filtros -->
+        <div style="display:flex; flex-direction:column; gap: 12px; margin-bottom: 12px;">
+          <div class="search-bar">
+            <i class="fas fa-search search-bar__icon"></i>
+            <input type="text" class="form-input" id="searchInput" placeholder="Buscar por nome ou produto..." />
+          </div>
+          <div class="filter-tabs" id="filterTabs" role="tablist">
+            <button class="filter-tab active" data-filter="all" role="tab" aria-selected="true">Todos</button>
+            <button class="filter-tab" data-filter="available" role="tab">Disponíveis</button>
+            <button class="filter-tab" data-filter="paid" role="tab">Pagos</button>
+            <button class="filter-tab" data-filter="unpaid" role="tab">A Pagar</button>
+            <button class="filter-tab" data-filter="undelivered" role="tab">A Entregar</button>
+          </div>
+        </div>
+
+        <!-- Legenda -->
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--clr-success)"></div> OK</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--clr-danger)"></div> Pagamento pendente</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--clr-warning)"></div> Entrega pendente</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--clr-neutral)"></div> Disponível</div>
+        </div>
+
+        <!-- Lista -->
+        <div class="items-list" id="itemsTableBody">
+          <!-- Gerado dinamicamente -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── BARRA INFERIOR ── -->
+    <nav class="bottom-bar" aria-label="Ações principais">
+      <button class="btn btn-ghost" id="btnGeneratePDF" title="Gerar relatório PDF">
+        <i class="fas fa-file-pdf"></i> PDF
+      </button>
+      <button class="btn btn-primary" id="saveHistory" title="Salvar no histórico e limpar">
+        <i class="fas fa-save"></i> Salvar Histórico
+      </button>
+      <button class="btn btn-danger btn-icon" id="clearAll" title="Excluir todos os itens">
+        <i class="fas fa-trash"></i>
+      </button>
+    </nav>
+
+    <!-- ── SCRIPTS ── -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="./src/script/indexedDB.js"></script>
+    <script src="./src/script/pdf.js"></script>
+    <script src="./src/script/index.js"></script>
   </body>
 </html>
