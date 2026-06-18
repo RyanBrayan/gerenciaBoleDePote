@@ -178,3 +178,33 @@ async function countSessions() {
   const sessions = await loadSessions();
   return sessions.length;
 }
+
+/**
+ * Retorna uma lista de nomes únicos de todas as pessoas no histórico
+ * @returns {Promise<Array<string>>}
+ */
+async function getAllPersonNames() {
+  await dbReady;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["sales"], "readonly");
+    const objectStore = transaction.objectStore("sales");
+    const request = objectStore.openCursor();
+    const names = new Set();
+
+    request.onsuccess = function (event) {
+      const cursor = event.target.result;
+      if (cursor) {
+        if (cursor.value.personName) {
+          names.add(cursor.value.personName.trim());
+        }
+        cursor.continue();
+      } else {
+        // Retorna a lista em ordem alfabética
+        resolve(Array.from(names).sort((a, b) => a.localeCompare(b)));
+      }
+    };
+
+    request.onerror = (e) => reject(e.target.error);
+  });
+}

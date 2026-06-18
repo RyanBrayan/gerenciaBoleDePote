@@ -316,18 +316,29 @@ body {
 }
 
 .form-input:focus {
+  outline: none;
   border-color: var(--clr-brand);
-  background: var(--clr-surface);
-  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
+  box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.15);
 }
 
-.form-input::placeholder { color: var(--clr-text-light); }
+/* ── Select Customizado ── */
+select.form-input {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-color: var(--clr-surface);
+  padding-right: var(--space-8);
+}
 
-.form-input[type="number"] { -moz-appearance: textfield; }
-.form-input[type="number"]::-webkit-outer-spin-button,
-.form-input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+select.form-input:hover {
+  border-color: var(--clr-brand);
+  background-color: var(--clr-brand-xlight);
+}
 
-/* Select customizado */
+select.form-input:focus {
+  background-color: var(--clr-surface);
+}
+
 .form-select-wrap {
   position: relative;
 }
@@ -337,12 +348,24 @@ body {
   font-family: 'Font Awesome 6 Free';
   font-weight: 900;
   position: absolute;
-  right: 14px;
+  right: var(--space-4);
   top: 50%;
   transform: translateY(-50%);
-  color: var(--clr-text-muted);
   pointer-events: none;
+  color: var(--clr-brand);
+  font-size: 16px;
+  transition: var(--transition);
 }
+
+.form-select-wrap:hover::after {
+  color: var(--clr-brand-dark);
+}
+
+.form-input::placeholder { color: var(--clr-text-light); }
+
+.form-input[type="number"] { -moz-appearance: textfield; }
+.form-input[type="number"]::-webkit-outer-spin-button,
+.form-input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
 /* Botões de quantidade */
 .qty-control {

@@ -261,11 +261,28 @@ document.getElementById('addItemButton').addEventListener('click', function () {
 
 // ── Atualizar datalist de nomes ───────────────────────────────
 
-function populatePersonDatalist() {
+async function populatePersonDatalist() {
   const dl = document.getElementById('personNamesList');
   if (!dl) return;
-  const names = getPersonNames();
-  dl.innerHTML = names.map(n => `<option value="${n}">`).join('');
+
+  // Carrega nomes do localStorage atual (vendas ainda não salvas no histórico)
+  const localNames = getPersonNames();
+
+  let historyNames = [];
+  try {
+    // Carrega nomes do IndexedDB (histórico completo)
+    if (typeof getAllPersonNames === 'function') {
+      historyNames = await getAllPersonNames();
+    }
+  } catch (err) {
+    console.error('Erro ao buscar nomes do histórico:', err);
+  }
+
+  // Combina as duas listas e remove duplicatas
+  const allNamesSet = new Set([...localNames, ...historyNames]);
+  const sortedNames = Array.from(allNamesSet).sort((a, b) => a.localeCompare(b));
+
+  dl.innerHTML = sortedNames.map(n => `<option value="${n}">`).join('');
 }
 
 // ── Popular dropdown de produtos ──────────────────────────────
@@ -284,16 +301,28 @@ function populateItemDropdown() {
 
   dropdown.innerHTML = '<option value="">Selecione um produto...</option>';
 
+  let availableOptionsCount = 0;
+  let lastAvailableName = '';
+
   Object.entries(counts).forEach(([name, { available, total }]) => {
     const opt = document.createElement('option');
     opt.value = name;
-    opt.textContent = `${name} (${available} disponível de ${total})`;
-    if (available === 0) opt.disabled = true;
+    opt.textContent = `${name} (${available} de ${total} disponíve${available === 1 ? 'l' : 'is'})`;
+    if (available === 0) {
+      opt.disabled = true;
+    } else {
+      availableOptionsCount++;
+      lastAvailableName = name;
+    }
     dropdown.appendChild(opt);
   });
 
-  // Restaurar seleção se ainda válida
-  if (currentVal && counts[currentVal]?.available > 0) dropdown.value = currentVal;
+  // Se tem só 1 produto disponível, auto-seleciona
+  if (availableOptionsCount === 1) {
+    dropdown.value = lastAvailableName;
+  } else if (currentVal && counts[currentVal]?.available > 0) {
+    dropdown.value = currentVal;
+  }
 }
 
 // ── Alternar status (pago/entregue) ───────────────────────────
@@ -548,8 +577,13 @@ document.getElementById('btnGeneratePDF').addEventListener('click', async functi
 
 // ── Inicialização ─────────────────────────────────────────────
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   populateItemDropdown();
-  populatePersonDatalist();
   renderItems();
+  
+  // Aguarda dbReady para carregar nomes do IndexedDB
+  if (typeof dbReady !== 'undefined') {
+    await dbReady.catch(console.error);
+  }
+  populatePersonDatalist();
 });
