@@ -79,7 +79,7 @@ async function generatePDF({ title, items, filename }) {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("Bole de Pote", margin, 12);
+  doc.text("Gestão de Itens", margin, 12);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
@@ -133,11 +133,13 @@ async function generatePDF({ title, items, filename }) {
   // ─── Tabela de itens ──────────────────────────────────────────
   const cols = [
     { label: "#", w: 8 },
-    { label: "Pessoa", w: 45 },
-    { label: "Produto", w: 40 },
-    { label: "Valor", w: 22 },
-    { label: "Pagto", w: 22 },
-    { label: "Entrega", w: 23 },
+    { label: "Pessoa", w: 34 },
+    { label: "Produto", w: 30 },
+    { label: "Valor", w: 20 },
+    { label: "Criado", w: 20 },
+    { label: "Vendido", w: 20 },
+    { label: "Pagto", w: 16 },
+    { label: "Entrega", w: 18 },
   ];
 
   // Cabeçalho da tabela
@@ -170,19 +172,27 @@ async function generatePDF({ title, items, filename }) {
 
     doc.setTextColor(30, 30, 30);
     cx = margin + 2;
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "-";
+      const [y, m, d] = dateStr.split('-');
+      return `${d}/${m}/${y.substring(2)}`;
+    };
+
     const rowData = [
       String(idx + 1),
-      (item.personName || "(sem nome)").substring(0, 22),
-      (item.itemName || "").substring(0, 20),
+      (item.personName || "(sem nome)").substring(0, 18),
+      (item.itemName || "").substring(0, 16),
       formatBRL(item.itemPrice || item.price),
+      formatDate(item.creationDate || item.date),
+      formatDate(item.saleDate || item.date),
       item.paid ? "Sim" : "Não",
       item.delivered ? "Sim" : "Não",
     ];
 
     rowData.forEach((text, i) => {
-      if (i === 4) {
+      if (i === 6) {
         doc.setTextColor(item.paid ? 22 : 220, item.paid ? 163 : 38, item.paid ? 74 : 38);
-      } else if (i === 5) {
+      } else if (i === 7) {
         doc.setTextColor(item.delivered ? 22 : 234, item.delivered ? 163 : 88, item.delivered ? 74 : 12);
       } else {
         doc.setTextColor(30, 30, 30);
@@ -216,7 +226,7 @@ async function generatePDF({ title, items, filename }) {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "italic");
   doc.setFontSize(7);
-  doc.text("Bole de Pote — Gerado automaticamente", pageW / 2, pageH - 4, {
+  doc.text("Gestão de Itens — Gerado automaticamente", pageW / 2, pageH - 4, {
     align: "center",
   });
 

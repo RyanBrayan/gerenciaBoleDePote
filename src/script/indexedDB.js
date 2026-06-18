@@ -73,6 +73,8 @@ async function saveSession(items, label = "") {
         sessionId: sessionId,
         sessionDate: sessionDate,
         sessionLabel: label,
+        creationDate: item.creationDate || null,
+        saleDate: item.saleDate || null,
       });
     });
 

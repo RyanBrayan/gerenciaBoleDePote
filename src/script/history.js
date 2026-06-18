@@ -8,7 +8,8 @@
 // ── Estado ─────────────────────────────────────────────────────
 let allSessions = [];
 let activeFilters = {
-  date: '',
+  creationDate: '',
+  saleDate: '',
   personName: '',
   paidStatus: 'all',
   deliveredStatus: 'all',
@@ -81,14 +82,15 @@ document.getElementById('btnOpenFilter').addEventListener('click', () => {
 
 document.getElementById('btnApplyFilter').addEventListener('click', () => {
   activeFilters = {
-    date: document.getElementById('filterDate').value,
+    creationDate: document.getElementById('filterCreationDate').value,
+    saleDate: document.getElementById('filterSaleDate').value,
     personName: document.getElementById('filterPersonName').value.trim().toLowerCase(),
     paidStatus: document.getElementById('filterPaidStatus').value,
     deliveredStatus: document.getElementById('filterDeliveredStatus').value,
   };
 
   // Indicador visual no botão de filtro
-  const hasFilter = activeFilters.date || activeFilters.personName ||
+  const hasFilter = activeFilters.creationDate || activeFilters.saleDate || activeFilters.personName ||
     activeFilters.paidStatus !== 'all' || activeFilters.deliveredStatus !== 'all';
   document.getElementById('btnOpenFilter').classList.toggle('has-filter', hasFilter);
 
@@ -97,11 +99,12 @@ document.getElementById('btnApplyFilter').addEventListener('click', () => {
 });
 
 document.getElementById('btnResetFilter').addEventListener('click', () => {
-  document.getElementById('filterDate').value = '';
+  document.getElementById('filterCreationDate').value = '';
+  document.getElementById('filterSaleDate').value = '';
   document.getElementById('filterPersonName').value = '';
   document.getElementById('filterPaidStatus').value = 'all';
   document.getElementById('filterDeliveredStatus').value = 'all';
-  activeFilters = { date: '', personName: '', paidStatus: 'all', deliveredStatus: 'all' };
+  activeFilters = { creationDate: '', saleDate: '', personName: '', paidStatus: 'all', deliveredStatus: 'all' };
   document.getElementById('btnOpenFilter').classList.remove('has-filter');
   closeSheet(null);
   renderSessions();
@@ -118,8 +121,12 @@ document.getElementById('searchHistory').addEventListener('input', function () {
 
 function applyItemFilters(items) {
   return items.filter(item => {
-    if (activeFilters.date && item.date !== activeFilters.date) return false;
-    if (activeFilters.personName && !item.personName.toLowerCase().includes(activeFilters.personName)) return false;
+    const itemCreationDate = item.creationDate || item.date;
+    const itemSaleDate = item.saleDate || item.date;
+
+    if (activeFilters.creationDate && itemCreationDate !== activeFilters.creationDate) return false;
+    if (activeFilters.saleDate && itemSaleDate !== activeFilters.saleDate) return false;
+    if (activeFilters.personName && (!item.personName || !item.personName.toLowerCase().includes(activeFilters.personName))) return false;
     if (activeFilters.paidStatus === 'paid' && !item.paid) return false;
     if (activeFilters.paidStatus === 'unpaid' && item.paid) return false;
     if (activeFilters.deliveredStatus === 'delivered' && !item.delivered) return false;
@@ -286,11 +293,28 @@ function buildItemRow(item) {
   const delivLabel = item.delivered ? '📦 Entregue' : '⏳ Aguardando';
   const personName = item.personName || '(sem nome)';
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}`;
+  };
+  const cDate = formatDate(item.creationDate);
+  const sDate = formatDate(item.saleDate);
+  let dateInfo = '';
+  if (cDate || sDate) {
+    dateInfo = `<div style="font-size: 10px; color: var(--clr-text-muted); margin-top: 2px;">`;
+    if (cDate) dateInfo += `Criado: ${cDate} `;
+    if (cDate && sDate) dateInfo += `| `;
+    if (sDate) dateInfo += `Vendido: ${sDate}`;
+    dateInfo += `</div>`;
+  }
+
   return `
     <div class="session-item">
       <div class="session-item__info">
         <div class="session-item__name">${personName}</div>
         <div class="session-item__product">${item.itemName}</div>
+        ${dateInfo}
       </div>
       <div class="session-item__badges">
         <span class="badge badge-sm ${paidClass}">${paidLabel}</span>

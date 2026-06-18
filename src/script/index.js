@@ -172,6 +172,8 @@ document.getElementById('btnAddProduct').addEventListener('click', function () {
     return;
   }
 
+  const todayDate = new Date().toISOString().split('T')[0];
+
   const items = getItems();
   for (let i = 0; i < itemQuantity; i++) {
     items.push({
@@ -181,6 +183,7 @@ document.getElementById('btnAddProduct').addEventListener('click', function () {
       paid: false,
       delivered: false,
       price: itemPrice,
+      creationDate: todayDate,
     });
   }
   setItems(items);
@@ -219,6 +222,7 @@ document.getElementById('addItemButton').addEventListener('click', function () {
     return;
   }
 
+  const saleTodayDate = new Date().toISOString().split('T')[0];
   let items = getItems();
   let count = 0;
 
@@ -227,6 +231,7 @@ document.getElementById('addItemButton').addEventListener('click', function () {
       items[i].personName = personName;
       items[i].paid = paid;
       items[i].delivered = delivered;
+      items[i].saleDate = saleTodayDate;
       count++;
     }
   }
