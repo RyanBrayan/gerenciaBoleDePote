@@ -268,8 +268,18 @@ document.getElementById('addItemButton').addEventListener('click', async functio
           delivered,
           saleDate: saleTodayDate,
           soldBy: currentUser.email,
-          soldAt: new Date()
-        }));
+          soldAt: new Date().toISOString()
+        };
+        if (paid) {
+          updatePayload.paidBy = currentUser.email;
+          updatePayload.paidAt = new Date().toISOString();
+        }
+        if (delivered) {
+          updatePayload.deliveredBy = currentUser.email;
+          updatePayload.deliveredAt = new Date().toISOString();
+        }
+
+        updatePromises.push(updateDoc(itemRef, updatePayload));
         count++;
       }
     }
@@ -377,10 +387,19 @@ async function toggleStatus(itemId, field) {
   if (!item) return;
   
   const newValue = !item[field];
+  const updateData = { [field]: newValue };
+
+  if (field === 'paid') {
+      updateData.paidBy = newValue ? currentUser.email : null;
+      updateData.paidAt = newValue ? new Date().toISOString() : null;
+  } else if (field === 'delivered') {
+      updateData.deliveredBy = newValue ? currentUser.email : null;
+      updateData.deliveredAt = newValue ? new Date().toISOString() : null;
+  }
   
   try {
     const itemRef = doc(db, "active_items", itemId);
-    await updateDoc(itemRef, { [field]: newValue });
+    await updateDoc(itemRef, updateData);
     vibrate([20]);
 
     const label = field === 'paid' ? (newValue ? 'Marcado como Pago' : 'Marcado como Pendente') :
@@ -396,15 +415,19 @@ async function toggleStatus(itemId, field) {
 
 async function deleteItem(itemId) {
   const confirmed = await openConfirmSheet(
-    'Excluir registro?',
-    'Esta ação não pode ser desfeita.'
+    'Mover para Lixeira?',
+    'O item será removido da tela principal e enviado para a lixeira no Histórico.'
   );
   if (!confirmed) return;
 
   try {
     const itemRef = doc(db, "active_items", itemId);
-    await deleteDoc(itemRef);
-    showToast('Registro removido.', 'info');
+    await updateDoc(itemRef, { 
+      deleted: true, 
+      deletedBy: currentUser.email, 
+      deletedAt: new Date().toISOString() 
+    });
+    showToast('Registro movido para a lixeira.', 'info');
   } catch (err) {
     console.error("Erro ao excluir:", err);
     showToast("Erro ao excluir registro", "error");
@@ -447,8 +470,10 @@ function renderItems() {
   document.getElementById('totalValueReceived').textContent = receivedVal.toFixed(2).replace('.', ',');
   document.getElementById('totalValuePending').textContent = pendingVal.toFixed(2).replace('.', ',');
 
-  // Filtrar
+  // Filtrar (ignorando os que foram enviados para a lixeira)
   const filtered = items.filter(item => {
+    if (item.deleted) return false;
+
     let match = true;
     if (currentFilter === 'available') match = !item.personName;
     else if (currentFilter === 'paid') match = item.paid && !!item.personName;
@@ -583,7 +608,7 @@ document.getElementById('saveHistory').addEventListener('click', async function 
         id: i.id // Ensure clean object serialization
       })),
       savedBy: currentUser.email,
-      savedAt: new Date()
+      savedAt: new Date().toISOString()
     });
 
     // 2. Deletar todos os itens do active_items
@@ -610,15 +635,22 @@ document.getElementById('clearAll').addEventListener('click', async function () 
   }
 
   const confirmed = await openConfirmSheet(
-    'Excluir todos os itens?',
-    'A lista atual será apagada permanentemente da nuvem!'
+    'Mover todos para Lixeira?',
+    'A lista atual será enviada para a lixeira no Histórico.'
   );
   if (!confirmed) return;
 
   try {
-    const deletePromises = items.map(item => deleteDoc(doc(db, "active_items", item.id)));
-    await Promise.all(deletePromises);
-    showToast('Lista limpa.', 'info');
+    const updatePromises = items.map(item => {
+      if (item.deleted) return Promise.resolve();
+      return updateDoc(doc(db, "active_items", item.id), {
+        deleted: true,
+        deletedBy: currentUser.email,
+        deletedAt: new Date().toISOString()
+      });
+    });
+    await Promise.all(updatePromises);
+    showToast('Lista enviada para a lixeira.', 'info');
   } catch (err) {
     console.error("Erro ao limpar:", err);
     showToast('Erro ao limpar a lista.', 'error');

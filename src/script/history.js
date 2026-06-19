@@ -13,6 +13,7 @@ let activeFilters = {
   personName: '',
   paidStatus: 'all',
   deliveredStatus: 'all',
+  deletedStatus: 'active',
 };
 let searchQuery = '';
 let sheetResolve = null;
@@ -109,11 +110,12 @@ document.getElementById('btnApplyFilter').addEventListener('click', () => {
     personName: document.getElementById('filterPersonName').value.trim().toLowerCase(),
     paidStatus: document.getElementById('filterPaidStatus').value,
     deliveredStatus: document.getElementById('filterDeliveredStatus').value,
+    deletedStatus: document.getElementById('filterDeletedStatus').value,
   };
 
   // Indicador visual no botão de filtro
   const hasFilter = activeFilters.creationDate || activeFilters.saleDate || activeFilters.personName ||
-    activeFilters.paidStatus !== 'all' || activeFilters.deliveredStatus !== 'all';
+    activeFilters.paidStatus !== 'all' || activeFilters.deliveredStatus !== 'all' || activeFilters.deletedStatus !== 'active';
   document.getElementById('btnOpenFilter').classList.toggle('has-filter', hasFilter);
 
   closeSheet(null);
@@ -126,7 +128,8 @@ document.getElementById('btnResetFilter').addEventListener('click', () => {
   document.getElementById('filterPersonName').value = '';
   document.getElementById('filterPaidStatus').value = 'all';
   document.getElementById('filterDeliveredStatus').value = 'all';
-  activeFilters = { creationDate: '', saleDate: '', personName: '', paidStatus: 'all', deliveredStatus: 'all' };
+  document.getElementById('filterDeletedStatus').value = 'active';
+  activeFilters = { creationDate: '', saleDate: '', personName: '', paidStatus: 'all', deliveredStatus: 'all', deletedStatus: 'active' };
   document.getElementById('btnOpenFilter').classList.remove('has-filter');
   closeSheet(null);
   renderSessions();
@@ -178,6 +181,12 @@ function renderSessions() {
   container.innerHTML = '';
 
   const sessionsToRender = allSessions
+    .filter(session => {
+      const isDeleted = session.deleted === true;
+      if (activeFilters.deletedStatus === 'active' && isDeleted) return false;
+      if (activeFilters.deletedStatus === 'deleted' && !isDeleted) return false;
+      return true;
+    })
     .map(session => ({
       ...session,
       filteredItems: applyItemFilters(session.items),
@@ -212,14 +221,19 @@ function buildSessionCard(session, stats, startOpen) {
   card.className = 'session-card';
   card.dataset.sessionId = session.sessionId;
 
-  const dateLabel = session.sessionDate || session.sessionId;
+  const isDeleted = session.deleted === true;
+  if (isDeleted) card.classList.add('deleted-session');
+
+  const dateLabel = session.sessionDate || session.sessionId || '';
   const label = session.sessionLabel ? ` — ${session.sessionLabel}` : '';
+  const deletedInfo = isDeleted ? `<div class="session-deleted-info">🗑️ Excluído por ${session.deletedBy || 'Desconhecido'}</div>` : '';
 
   card.innerHTML = `
     <div class="session-header" role="button" aria-expanded="${startOpen}">
       <div class="session-icon">📋</div>
       <div class="session-info">
         <div class="session-date">${dateLabel}${label}</div>
+        ${deletedInfo}
         <div class="session-stats">
           <span class="session-stat money">${formatBRLLocal(stats.total)}</span>
           <span class="session-stat ok">✓ ${stats.paidCount} pagos</span>
@@ -295,12 +309,21 @@ function buildSessionCard(session, stats, startOpen) {
     try {
       const q = query(collection(db, "history_sessions"), where("sessionId", "==", session.sessionId));
       const snap = await getDocs(q);
-      const deletePromises = snap.docs.map(d => deleteDoc(doc(db, "history_sessions", d.id)));
-      await Promise.all(deletePromises);
+      const updatePromises = snap.docs.map(d => updateDoc(doc(db, "history_sessions", d.id), {
+        deleted: true,
+        deletedBy: currentUser.email,
+        deletedAt: new Date().toISOString()
+      }));
+      await Promise.all(updatePromises);
       
-      allSessions = allSessions.filter(s => s.sessionId !== session.sessionId);
+      const sessObj = allSessions.find(s => s.sessionId === session.sessionId);
+      if(sessObj) {
+        sessObj.deleted = true;
+        sessObj.deletedBy = currentUser.email;
+        sessObj.deletedAt = new Date().toISOString();
+      }
       renderSessions();
-      showToast('Sessão excluída da nuvem.', 'info');
+      showToast('Sessão movida para a lixeira.', 'info');
     } catch (err) {
       console.error(err);
       showToast('Erro ao excluir sessão.', 'error');
@@ -326,21 +349,20 @@ function buildItemRow(item) {
   };
   const cDate = formatDate(item.creationDate);
   const sDate = formatDate(item.saleDate);
-  let dateInfo = '';
-  if (cDate || sDate) {
-    dateInfo = `<div style="font-size: 10px; color: var(--clr-text-muted); margin-top: 2px;">`;
-    if (cDate) dateInfo += `Criado: ${cDate} `;
-    if (cDate && sDate) dateInfo += `| `;
-    if (sDate) dateInfo += `Vendido: ${sDate}`;
-    dateInfo += `</div>`;
-  }
+  let auditInfo = `<div class="audit-info" style="font-size: 10px; color: var(--clr-text-muted); margin-top: 4px;">`;
+  if (cDate) auditInfo += `Criado: ${cDate} por ${item.createdBy || 'Sistema'}<br>`;
+  if (sDate) auditInfo += `Vendido: ${sDate} por ${item.soldBy || 'Sistema'}<br>`;
+  if (item.paid && item.paidBy) auditInfo += `Pago por: ${item.paidBy}<br>`;
+  if (item.delivered && item.deliveredBy) auditInfo += `Entregue por: ${item.deliveredBy}<br>`;
+  if (item.deleted && item.deletedBy) auditInfo += `<span style="color:var(--clr-danger)">Excluído por: ${item.deletedBy}</span><br>`;
+  auditInfo += `</div>`;
 
   return `
     <div class="session-item">
       <div class="session-item__info">
         <div class="session-item__name">${personName}</div>
         <div class="session-item__product">${item.itemName}</div>
-        ${dateInfo}
+        ${auditInfo}
       </div>
       <div class="session-item__badges">
         <span class="badge badge-sm ${paidClass}">${paidLabel}</span>
@@ -382,7 +404,26 @@ async function init() {
       orderBy("sessionId", "desc")
     );
     const snap = await getDocs(q);
-    allSessions = snap.docs.map(doc => doc.data());
+    let sessionsFetched = snap.docs.map(doc => doc.data());
+
+    // Puxa os itens deletados do estoque ativo para criar uma "Sessão Lixeira do Estoque" virtual
+    const qActive = query(collection(db, "active_items"), where("eventId", "==", "default"));
+    const snapActive = await getDocs(qActive);
+    const activeItems = snapActive.docs.map(d => ({id: d.id, ...d.data()}));
+    
+    const deletedActiveItems = activeItems.filter(i => i.deleted === true);
+    if (deletedActiveItems.length > 0) {
+      sessionsFetched.unshift({
+        sessionId: "trash_" + new Date().getTime(),
+        sessionDate: "N/A",
+        sessionLabel: "Lixeira do Estoque Atual",
+        deleted: true,
+        deletedBy: "Vários",
+        items: deletedActiveItems
+      });
+    }
+
+    allSessions = sessionsFetched;
     renderSessions();
   } catch (err) {
     console.error('Erro ao carregar histórico do Firestore:', err);

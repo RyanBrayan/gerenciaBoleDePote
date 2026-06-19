@@ -239,3 +239,17 @@
   color: var(--clr-brand);
   background: var(--clr-brand-xlight);
 }
+
+
+/* Lixeira / Excluídos */
+.deleted-session {
+  opacity: 0.7;
+  border-left: 4px solid var(--clr-danger);
+}
+.session-deleted-info {
+  font-size: 11px;
+  color: var(--clr-danger);
+  font-weight: 600;
+  margin-top: 4px;
+}
+
