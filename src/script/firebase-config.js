@@ -22,27 +22,29 @@ const googleProvider = new GoogleAuthProvider();
 // Adicione aqui os e-mails exatos das pessoas que podem usar o sistema.
 // Quem não estiver nesta lista será expulso imediatamente.
 const ALLOWED_EMAILS = [
-  "ryanjuniorvba@gmail.com", // Substitua pelo seu e-mail real
-  "amigo@gmail.com"
+  "ryanbrayanf@gmail.com", // Substitua pelo seu e-mail real
+  "kakamgk00@gmail.com",
+  "gretamanulima@gmail.com",
+  "sedutorryan924@gmail.com"
 ];
 
-export { 
-    auth, 
-    db, 
-    googleProvider, 
-    signInWithPopup, 
-    signOut, 
-    onAuthStateChanged,
-    collection, 
-    addDoc, 
-    onSnapshot, 
-    query, 
-    where, 
-    getDocs, 
-    deleteDoc, 
-    doc, 
-    updateDoc, 
-    setDoc,
-    orderBy,
-    ALLOWED_EMAILS
+export {
+  auth,
+  db,
+  googleProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  where,
+  getDocs,
+  deleteDoc,
+  doc,
+  updateDoc,
+  setDoc,
+  orderBy,
+  ALLOWED_EMAILS
 };
