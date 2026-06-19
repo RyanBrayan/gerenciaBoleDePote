@@ -18,6 +18,14 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
+// ── LISTA VIP (CONTROLE DE ACESSO) ───────────────────────────
+// Adicione aqui os e-mails exatos das pessoas que podem usar o sistema.
+// Quem não estiver nesta lista será expulso imediatamente.
+const ALLOWED_EMAILS = [
+  "ryanjuniorvba@gmail.com", // Substitua pelo seu e-mail real
+  "amigo@gmail.com"
+];
+
 export { 
     auth, 
     db, 
@@ -35,5 +43,6 @@ export {
     doc, 
     updateDoc, 
     setDoc,
-    orderBy
+    orderBy,
+    ALLOWED_EMAILS
 };

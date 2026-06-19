@@ -3,7 +3,7 @@
  * Gerenciamento de Itens — Mobile First
  */
 
-import { auth, db, onAuthStateChanged, signOut, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, where, getDocs, addDoc } from './firebase-config.js';
+import { auth, db, onAuthStateChanged, signOut, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, where, getDocs, addDoc, ALLOWED_EMAILS } from './firebase-config.js';
 
 let localItems = [];
 let currentFilter = 'all';
@@ -23,6 +23,12 @@ function getItems() {
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
+    if (!ALLOWED_EMAILS.includes(user.email)) {
+      signOut(auth);
+      window.location.href = './login.html';
+      return;
+    }
+
     currentUser = user;
     
     // Escuta ativa de itens em tempo real no Firestore (sala global 'default')

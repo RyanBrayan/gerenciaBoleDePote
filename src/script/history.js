@@ -3,7 +3,7 @@
  * Gerenciamento de Itens — Mobile First
  */
 
-import { auth, db, onAuthStateChanged, signOut, collection, query, where, getDocs, deleteDoc, doc, orderBy } from './firebase-config.js';
+import { auth, db, onAuthStateChanged, signOut, collection, query, where, getDocs, deleteDoc, doc, orderBy, ALLOWED_EMAILS } from './firebase-config.js';
 
 // ── Estado ─────────────────────────────────────────────────────
 let allSessions = [];
@@ -23,6 +23,12 @@ let currentUser = null;
 
 onAuthStateChanged(auth, async (user) => {
   if (user) {
+    if (!ALLOWED_EMAILS.includes(user.email)) {
+      signOut(auth);
+      window.location.href = './login.html';
+      return;
+    }
+
     currentUser = user;
     await init();
   } else {

@@ -103,7 +103,7 @@
     <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
     <script type="module">
-      import { auth, googleProvider, signInWithPopup, onAuthStateChanged } from './src/script/firebase-config.js';
+      import { auth, googleProvider, signInWithPopup, onAuthStateChanged, signOut, ALLOWED_EMAILS } from './src/script/firebase-config.js';
 
       const btnGoogleLogin = document.getElementById('btnGoogleLogin');
       const spinner = document.getElementById('loadingSpinner');
@@ -123,7 +123,11 @@
       // Check if already logged in
       onAuthStateChanged(auth, (user) => {
         if (user) {
-          window.location.href = './index.html';
+          if (ALLOWED_EMAILS.includes(user.email)) {
+            window.location.href = './index.html';
+          } else {
+            signOut(auth);
+          }
         }
       });
 
@@ -132,7 +136,17 @@
           btnGoogleLogin.style.display = 'none';
           spinner.style.display = 'block';
           
-          await signInWithPopup(auth, googleProvider);
+          const result = await signInWithPopup(auth, googleProvider);
+          const user = result.user;
+          
+          if (!ALLOWED_EMAILS.includes(user.email)) {
+            await signOut(auth);
+            showToast('Acesso negado: Seu e-mail não está na lista VIP.', 'error');
+            btnGoogleLogin.style.display = 'flex';
+            spinner.style.display = 'none';
+            return;
+          }
+
           showToast('Login realizado com sucesso!');
           // Redirecionamento é feito pelo onAuthStateChanged acima
         } catch (error) {
