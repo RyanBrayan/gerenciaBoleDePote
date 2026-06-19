@@ -1,9 +1,9 @@
 /**
- * history.js — Lógica da página de histórico
+ * history.js — Lógica da página de histórico (Firebase Cloud)
  * Gerenciamento de Itens — Mobile First
  */
 
-'use strict';
+import { auth, db, onAuthStateChanged, signOut, collection, query, where, getDocs, deleteDoc, doc, orderBy } from './firebase-config.js';
 
 // ── Estado ─────────────────────────────────────────────────────
 let allSessions = [];
@@ -17,6 +17,22 @@ let activeFilters = {
 let searchQuery = '';
 let sheetResolve = null;
 let activeSheet = null;
+let currentUser = null;
+
+// ── Autenticação ─────────────────────────────────────────────
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
+    await init();
+  } else {
+    window.location.href = './login.html';
+  }
+});
+
+document.getElementById('btnLogout')?.addEventListener('click', () => {
+  signOut(auth);
+});
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -240,7 +256,7 @@ function buildSessionCard(session, stats, startOpen) {
     e.stopPropagation();
     try {
       showToast('Gerando PDF...', 'info');
-      await generatePDF({
+      await window.generatePDF({
         title: `Sessão: ${dateLabel}${label}`,
         items: session.filteredItems,
         filename: `sessao-${session.sessionId}.pdf`,
@@ -271,10 +287,14 @@ function buildSessionCard(session, stats, startOpen) {
     );
     if (!confirmed) return;
     try {
-      await deleteSession(session.sessionId);
+      const q = query(collection(db, "history_sessions"), where("sessionId", "==", session.sessionId));
+      const snap = await getDocs(q);
+      const deletePromises = snap.docs.map(d => deleteDoc(doc(db, "history_sessions", d.id)));
+      await Promise.all(deletePromises);
+      
       allSessions = allSessions.filter(s => s.sessionId !== session.sessionId);
       renderSessions();
-      showToast('Sessão excluída.', 'info');
+      showToast('Sessão excluída da nuvem.', 'info');
     } catch (err) {
       console.error(err);
       showToast('Erro ao excluir sessão.', 'error');
@@ -331,15 +351,15 @@ document.getElementById('btnExportAll').addEventListener('click', async () => {
     showToast('Nenhum histórico para exportar.', 'warning');
     return;
   }
-  try {
-    showToast('Gerando PDF geral...', 'info');
-    const allItems = allSessions.flatMap(s => s.items);
-    await generatePDF({
-      title: `Histórico Completo — ${new Date().toLocaleDateString('pt-BR')}`,
-      items: allItems,
-      filename: `historico-completo-${new Date().toISOString().split('T')[0]}.pdf`,
-    });
-    showToast('PDF gerado!', 'success');
+    try {
+      showToast('Gerando PDF geral...', 'info');
+      const allItems = allSessions.flatMap(s => s.items);
+      await window.generatePDF({
+        title: `Histórico Completo — ${new Date().toLocaleDateString('pt-BR')}`,
+        items: allItems,
+        filename: `historico-completo-${new Date().toISOString().split('T')[0]}.pdf`,
+      });
+      showToast('PDF gerado!', 'success');
   } catch (err) {
     console.error(err);
     showToast('Erro ao gerar PDF.', 'error');
@@ -350,21 +370,31 @@ document.getElementById('btnExportAll').addEventListener('click', async () => {
 
 async function init() {
   try {
-    allSessions = await loadSessions();
+    const q = query(
+      collection(db, "history_sessions"), 
+      where("eventId", "==", "default"), 
+      orderBy("sessionId", "desc")
+    );
+    const snap = await getDocs(q);
+    allSessions = snap.docs.map(doc => doc.data());
     renderSessions();
   } catch (err) {
-    console.error('Erro ao carregar histórico:', err);
-    showToast('Erro ao carregar histórico.', 'error');
+    console.error('Erro ao carregar histórico do Firestore:', err);
+    
+    // Tenta carregar sem orderBy se houver erro de índice
+    try {
+      const qFallback = query(collection(db, "history_sessions"), where("eventId", "==", "default"));
+      const snapFall = await getDocs(qFallback);
+      allSessions = snapFall.docs.map(doc => doc.data()).sort((a,b) => b.sessionId.localeCompare(a.sessionId));
+      renderSessions();
+    } catch (errFall) {
+      console.error('Fallback também falhou:', errFall);
+      document.getElementById('sessionsList').innerHTML = `
+        <div class="history-empty">
+          <div class="history-empty__icon"><i class="fas fa-exclamation-triangle"></i></div>
+          <div class="history-empty__title">Erro de Conexão</div>
+          <div class="history-empty__desc">Não foi possível carregar o histórico da nuvem.</div>
+        </div>`;
+    }
   }
 }
-
-// Aguardar IndexedDB inicializar antes de carregar
-dbReady.then(init).catch(err => {
-  console.error(err);
-  document.getElementById('sessionsList').innerHTML = `
-    <div class="history-empty">
-      <div class="history-empty__icon"><i class="fas fa-exclamation-triangle"></i></div>
-      <div class="history-empty__title">Erro ao acessar banco de dados</div>
-      <div class="history-empty__desc">Tente recarregar a página.</div>
-    </div>`;
-});

@@ -25,6 +25,9 @@
         <button class="header-btn" id="btnExportAll" title="Exportar tudo em PDF">
           <i class="fas fa-file-pdf"></i>
         </button>
+        <button class="header-btn" id="btnLogout" title="Sair" style="margin-left: 8px;">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
       </div>
     </header>
 
@@ -120,8 +123,7 @@
 
     <!-- ── SCRIPTS ── -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="./src/script/indexedDB.js"></script>
     <script src="./src/script/pdf.js"></script>
-    <script src="./src/script/history.js"></script>
+    <script type="module" src="./src/script/history.js"></script>
   </body>
 </html>

@@ -1,38 +1,52 @@
 /**
- * index.js — Lógica da tela principal
+ * index.js — Lógica da tela principal (Firebase Cloud)
  * Gerenciamento de Itens — Mobile First
  */
 
-'use strict';
+import { auth, db, onAuthStateChanged, signOut, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, where, getDocs, addDoc } from './firebase-config.js';
 
-// ── Estado ─────────────────────────────────────────────────────
+let localItems = [];
 let currentFilter = 'all';
 let currentSearch = '';
 let currentQty = 1;
 let sheetResolve = null;
+let currentUser = null;
+let unsubscribe = null;
 
-// ── Helpers: localStorage ──────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────
 
 function getItems() {
-  return JSON.parse(localStorage.getItem('items')) || [];
+  return localItems;
 }
 
-function setItems(items) {
-  localStorage.setItem('items', JSON.stringify(items));
-}
+// ── Autenticação ─────────────────────────────────────────────
 
-function getPersonNames() {
-  return JSON.parse(localStorage.getItem('personNames')) || [];
-}
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    
+    // Escuta ativa de itens em tempo real no Firestore (sala global 'default')
+    const q = query(collection(db, "active_items"), where("eventId", "==", "default"));
+    unsubscribe = onSnapshot(q, (snapshot) => {
+      localItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      populateItemDropdown();
+      renderItems();
+      populatePersonDatalist();
+    }, (error) => {
+      console.error("Erro ao carregar dados em tempo real:", error);
+      showToast("Erro ao conectar no banco de dados", "error");
+    });
 
-function addPersonName(name) {
-  if (!name) return;
-  const names = getPersonNames();
-  if (!names.includes(name)) {
-    names.push(name);
-    localStorage.setItem('personNames', JSON.stringify(names));
+  } else {
+    window.location.href = './login.html';
   }
-}
+});
+
+document.getElementById('btnLogout')?.addEventListener('click', () => {
+  if (unsubscribe) unsubscribe();
+  signOut(auth);
+});
 
 // ── Toast ──────────────────────────────────────────────────────
 
@@ -161,7 +175,7 @@ document.getElementById('qtyPlus').addEventListener('click', () => {
 
 // ── Adicionar produto ao estoque ──────────────────────────────
 
-document.getElementById('btnAddProduct').addEventListener('click', function () {
+document.getElementById('btnAddProduct').addEventListener('click', async function () {
   const itemName = document.getElementById('itemName').value.trim();
   const itemQuantity = parseInt(document.getElementById('itemQuantity').value, 10);
   const itemPrice = parseFloat(document.getElementById('itemPrice').value);
@@ -174,39 +188,48 @@ document.getElementById('btnAddProduct').addEventListener('click', function () {
 
   const todayDate = new Date().toISOString().split('T')[0];
 
-  const items = getItems();
-  for (let i = 0; i < itemQuantity; i++) {
-    items.push({
-      id: Date.now() + i,
-      itemName,
-      personName: '',
-      paid: false,
-      delivered: false,
-      price: itemPrice,
-      creationDate: todayDate,
-    });
+  const btn = this;
+  btn.disabled = true;
+
+  try {
+    for (let i = 0; i < itemQuantity; i++) {
+      const newRef = doc(collection(db, "active_items"));
+      await setDoc(newRef, {
+        eventId: "default", // Hardcoded para colaboração global
+        itemName,
+        personName: '',
+        paid: false,
+        delivered: false,
+        price: itemPrice,
+        creationDate: todayDate,
+        createdBy: currentUser.email,
+        createdAt: new Date()
+      });
+    }
+
+    document.getElementById('itemName').value = '';
+    document.getElementById('itemQuantity').value = '';
+    document.getElementById('itemPrice').value = '';
+
+    // Fechar card após adicionar
+    const body = document.getElementById('produtoBody');
+    const chevron = document.getElementById('produtoChevron');
+    body.classList.add('collapsed');
+    if (chevron) chevron.classList.remove('open');
+
+    showToast(`${itemQuantity}x "${itemName}" adicionado ao estoque!`, 'success');
+    vibrate([30]);
+  } catch (err) {
+    console.error("Erro ao adicionar no Firestore:", err);
+    showToast("Erro ao adicionar produto", "error");
+  } finally {
+    btn.disabled = false;
   }
-  setItems(items);
-
-  document.getElementById('itemName').value = '';
-  document.getElementById('itemQuantity').value = '';
-  document.getElementById('itemPrice').value = '';
-
-  // Fechar card após adicionar
-  const body = document.getElementById('produtoBody');
-  const chevron = document.getElementById('produtoChevron');
-  body.classList.add('collapsed');
-  if (chevron) chevron.classList.remove('open');
-
-  populateItemDropdown();
-  renderItems();
-  showToast(`${itemQuantity}x "${itemName}" adicionado ao estoque!`, 'success');
-  vibrate([30]);
 });
 
 // ── Registrar venda ───────────────────────────────────────────
 
-document.getElementById('addItemButton').addEventListener('click', function () {
+document.getElementById('addItemButton').addEventListener('click', async function () {
   const itemName = document.getElementById('itemDropdown').value;
   const personName = document.getElementById('personNameInput').value.trim();
   const itemQuantity = parseInt(document.getElementById('itemQuantityInput').value, 10) || 1;
@@ -223,40 +246,56 @@ document.getElementById('addItemButton').addEventListener('click', function () {
   }
 
   const saleTodayDate = new Date().toISOString().split('T')[0];
-  let items = getItems();
   let count = 0;
 
-  for (let i = 0; i < items.length && count < itemQuantity; i++) {
-    if (items[i].itemName === itemName && !items[i].personName) {
-      items[i].personName = personName;
-      items[i].paid = paid;
-      items[i].delivered = delivered;
-      items[i].saleDate = saleTodayDate;
-      count++;
+  const btn = this;
+  btn.disabled = true;
+
+  try {
+    const updatePromises = [];
+    for (let i = 0; i < localItems.length && count < itemQuantity; i++) {
+      if (localItems[i].itemName === itemName && !localItems[i].personName) {
+        const itemRef = doc(db, "active_items", localItems[i].id);
+        updatePromises.push(updateDoc(itemRef, {
+          personName,
+          paid,
+          delivered,
+          saleDate: saleTodayDate,
+          soldBy: currentUser.email,
+          soldAt: new Date()
+        }));
+        count++;
+      }
     }
+
+    if (count === 0) {
+      showToast('Nenhuma unidade disponível deste produto.', 'warning');
+      btn.disabled = false;
+      return;
+    }
+
+    await Promise.all(updatePromises);
+
+    // Salvar nome da pessoa isolado para autocomplete futuramente, se desejado
+    const personRef = doc(collection(db, "person_names"));
+    setDoc(personRef, { name: personName, eventId: "default" }).catch(console.error);
+
+    // Reset form
+    document.getElementById('personNameInput').value = '';
+    document.getElementById('paidCheckbox').checked = false;
+    document.getElementById('deliveredCheckbox').checked = false;
+    currentQty = 1;
+    document.getElementById('qtyDisplay').textContent = '1';
+    document.getElementById('itemQuantityInput').value = '1';
+
+    showToast(`Venda de ${count}x "${itemName}" para ${personName} registrada!`, 'success');
+    vibrate([30, 20, 30]);
+  } catch (err) {
+    console.error("Erro ao registrar venda:", err);
+    showToast("Erro ao registrar venda", "error");
+  } finally {
+    btn.disabled = false;
   }
-
-  if (count === 0) {
-    showToast('Nenhuma unidade disponível deste produto.', 'warning');
-    return;
-  }
-
-  setItems(items);
-  addPersonName(personName);
-  populatePersonDatalist();
-
-  // Reset form
-  document.getElementById('personNameInput').value = '';
-  document.getElementById('paidCheckbox').checked = false;
-  document.getElementById('deliveredCheckbox').checked = false;
-  currentQty = 1;
-  document.getElementById('qtyDisplay').textContent = '1';
-  document.getElementById('itemQuantityInput').value = '1';
-
-  populateItemDropdown();
-  renderItems();
-  showToast(`Venda de ${count}x "${itemName}" para ${personName} registrada!`, 'success');
-  vibrate([30, 20, 30]);
 });
 
 // ── Atualizar datalist de nomes ───────────────────────────────
@@ -265,20 +304,20 @@ async function populatePersonDatalist() {
   const dl = document.getElementById('personNamesList');
   if (!dl) return;
 
-  // Carrega nomes do localStorage atual (vendas ainda não salvas no histórico)
-  const localNames = getPersonNames();
+  // Carrega nomes atuais em cache
+  const localNames = localItems.filter(i => i.personName).map(i => i.personName);
 
   let historyNames = [];
   try {
-    // Carrega nomes do IndexedDB (histórico completo)
-    if (typeof getAllPersonNames === 'function') {
-      historyNames = await getAllPersonNames();
-    }
+    // Carrega nomes globais (histórico)
+    const q = query(collection(db, "person_names"), where("eventId", "==", "default"));
+    const snapshot = await getDocs(q);
+    historyNames = snapshot.docs.map(doc => doc.data().name);
   } catch (err) {
     console.error('Erro ao buscar nomes do histórico:', err);
   }
 
-  // Combina as duas listas e remove duplicatas
+  // Combina as listas
   const allNamesSet = new Set([...localNames, ...historyNames]);
   const sortedNames = Array.from(allNamesSet).sort((a, b) => a.localeCompare(b));
 
@@ -327,18 +366,24 @@ function populateItemDropdown() {
 
 // ── Alternar status (pago/entregue) ───────────────────────────
 
-function toggleStatus(itemId, field) {
-  const items = getItems();
-  const idx = items.findIndex(i => i.id === itemId);
-  if (idx === -1) return;
-  items[idx][field] = !items[idx][field];
-  setItems(items);
-  renderItems();
-  vibrate([20]);
+async function toggleStatus(itemId, field) {
+  const item = localItems.find(i => i.id === itemId);
+  if (!item) return;
+  
+  const newValue = !item[field];
+  
+  try {
+    const itemRef = doc(db, "active_items", itemId);
+    await updateDoc(itemRef, { [field]: newValue });
+    vibrate([20]);
 
-  const label = field === 'paid' ? (items[idx][field] ? 'Marcado como Pago' : 'Marcado como Pendente') :
-                                   (items[idx][field] ? 'Marcado como Entregue' : 'Aguardando Entrega');
-  showToast(label, items[idx][field] ? 'success' : 'warning');
+    const label = field === 'paid' ? (newValue ? 'Marcado como Pago' : 'Marcado como Pendente') :
+                                     (newValue ? 'Marcado como Entregue' : 'Aguardando Entrega');
+    showToast(label, newValue ? 'success' : 'warning');
+  } catch (err) {
+    console.error("Erro ao alterar status:", err);
+    showToast("Erro ao alterar status", "error");
+  }
 }
 
 // ── Excluir item ──────────────────────────────────────────────
@@ -350,11 +395,14 @@ async function deleteItem(itemId) {
   );
   if (!confirmed) return;
 
-  const items = getItems().filter(i => i.id !== itemId);
-  setItems(items);
-  populateItemDropdown();
-  renderItems();
-  showToast('Registro removido.', 'info');
+  try {
+    const itemRef = doc(db, "active_items", itemId);
+    await deleteDoc(itemRef);
+    showToast('Registro removido.', 'info');
+  } catch (err) {
+    console.error("Erro ao excluir:", err);
+    showToast("Erro ao excluir registro", "error");
+  }
 }
 
 // ── Calcular status visual do card ────────────────────────────
@@ -405,7 +453,7 @@ function renderItems() {
       const q = currentSearch.toLowerCase();
       match = match && (
         item.itemName.toLowerCase().includes(q) ||
-        item.personName.toLowerCase().includes(q)
+        (item.personName && item.personName.toLowerCase().includes(q))
       );
     }
     return match;
@@ -482,14 +530,14 @@ function renderItems() {
   // Event delegation — badges de status
   body.querySelectorAll('.badge[data-field]').forEach(badge => {
     badge.addEventListener('click', () => {
-      toggleStatus(Number(badge.dataset.id), badge.dataset.field);
+      toggleStatus(badge.dataset.id, badge.dataset.field);
     });
   });
 
   // Event delegation — botões de deletar
   body.querySelectorAll('.btn-delete').forEach(btn => {
     btn.addEventListener('click', () => {
-      deleteItem(Number(btn.dataset.id));
+      deleteItem(btn.dataset.id);
     });
   });
 }
@@ -505,21 +553,44 @@ document.getElementById('saveHistory').addEventListener('click', async function 
 
   const confirmed = await openConfirmSheet(
     'Salvar no Histórico?',
-    `${items.length} itens serão salvos e a lista atual será limpa.`
+    `${items.length} itens serão salvos na nuvem e a lista atual será limpa.`
   );
   if (!confirmed) return;
 
+  const btn = this;
+  btn.disabled = true;
+
   try {
-    await dbReady;
-    await saveSession(items);
-    localStorage.removeItem('items');
-    populateItemDropdown();
-    renderItems();
+    showToast('Salvando na nuvem...', 'info');
+    const sessionId = Date.now().toString();
+    const sessionDate = new Date().toISOString().split('T')[0];
+    
+    // 1. Salvar na coleção history_sessions
+    const sessionRef = doc(collection(db, "history_sessions"));
+    await setDoc(sessionRef, {
+      sessionId,
+      sessionDate,
+      sessionLabel: "Histórico Cloud",
+      eventId: "default",
+      items: items.map(i => ({
+        ...i,
+        id: i.id // Ensure clean object serialization
+      })),
+      savedBy: currentUser.email,
+      savedAt: new Date()
+    });
+
+    // 2. Deletar todos os itens do active_items
+    const deletePromises = items.map(item => deleteDoc(doc(db, "active_items", item.id)));
+    await Promise.all(deletePromises);
+
     showToast('Histórico salvo com sucesso!', 'success');
     vibrate([30, 20, 60]);
   } catch (err) {
-    console.error(err);
+    console.error("Erro ao salvar histórico na nuvem:", err);
     showToast('Erro ao salvar histórico.', 'error');
+  } finally {
+    btn.disabled = false;
   }
 });
 
@@ -534,14 +605,18 @@ document.getElementById('clearAll').addEventListener('click', async function () 
 
   const confirmed = await openConfirmSheet(
     'Excluir todos os itens?',
-    'A lista atual será apagada permanentemente (sem salvar no histórico).'
+    'A lista atual será apagada permanentemente da nuvem!'
   );
   if (!confirmed) return;
 
-  localStorage.removeItem('items');
-  populateItemDropdown();
-  renderItems();
-  showToast('Lista limpa.', 'info');
+  try {
+    const deletePromises = items.map(item => deleteDoc(doc(db, "active_items", item.id)));
+    await Promise.all(deletePromises);
+    showToast('Lista limpa.', 'info');
+  } catch (err) {
+    console.error("Erro ao limpar:", err);
+    showToast('Erro ao limpar a lista.', 'error');
+  }
 });
 
 // ── Gerar PDF da tela atual ───────────────────────────────────
@@ -563,7 +638,9 @@ document.getElementById('btnGeneratePDF').addEventListener('click', async functi
   try {
     showToast('Gerando PDF...', 'info');
     const today = new Date().toLocaleDateString('pt-BR');
-    await generatePDF({
+    
+    // Como generatePDF está no escopo global (definido no arquivo pdf.js não-módulo)
+    await window.generatePDF({
       title: `Relatório de Vendas — ${today}`,
       items: vendas.map(i => ({ ...i, itemPrice: i.price })),
       filename: `relatorio-${new Date().toISOString().split('T')[0]}.pdf`,
@@ -573,17 +650,4 @@ document.getElementById('btnGeneratePDF').addEventListener('click', async functi
     console.error(err);
     showToast('Erro ao gerar PDF.', 'error');
   }
-});
-
-// ── Inicialização ─────────────────────────────────────────────
-
-window.addEventListener('load', async () => {
-  populateItemDropdown();
-  renderItems();
-  
-  // Aguarda dbReady para carregar nomes do IndexedDB
-  if (typeof dbReady !== 'undefined') {
-    await dbReady.catch(console.error);
-  }
-  populatePersonDatalist();
 });
