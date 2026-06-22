@@ -266,6 +266,7 @@ document.getElementById('addItemButton').addEventListener('click', async functio
           personName,
           paid,
           delivered,
+          preparationStatus: 'pending',
           saleDate: saleTodayDate,
           soldBy: currentUser.email,
           soldAt: new Date().toISOString()
@@ -517,6 +518,11 @@ function renderItems() {
     const delivIcon = item.delivered ? 'fa-box' : 'fa-clock';
     const delivLabel = item.delivered ? 'Entregue' : 'Aguardando';
 
+    const prepStatus = item.preparationStatus || 'pending';
+    const prepBadgeClass = prepStatus === 'ready' ? 'badge-paid' : (prepStatus === 'preparing' ? 'badge-free' : 'badge-unpaid');
+    const prepIcon = prepStatus === 'ready' ? 'fa-check-double' : (prepStatus === 'preparing' ? 'fa-fire-burner' : 'fa-clipboard-list');
+    const prepLabel = prepStatus === 'ready' ? 'Pronto' : (prepStatus === 'preparing' ? 'Preparando' : 'Fila Cozinha');
+
     if (!item.personName) {
       // Item disponível — sem nome
       card.innerHTML = `
@@ -547,6 +553,9 @@ function renderItems() {
           <button class="badge ${delivBadgeClass}" data-id="${item.id}" data-field="delivered" aria-label="Alternar entrega">
             <i class="fas ${delivIcon}"></i> ${delivLabel}
           </button>
+          <span class="badge ${prepBadgeClass}" title="Status do Preparo">
+            <i class="fas ${prepIcon}"></i> ${prepLabel}
+          </span>
         </div>
         <div class="item-card__actions">
           <button class="btn-delete" data-id="${item.id}" aria-label="Excluir item">

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Tela de cozinha para preparo de pedidos." />
+    <meta name="theme-color" content="#ea580c" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Cozinha" />
+    <title>Cozinha - Gerenciamento</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="./src/css/style.css" />
+  </head>
+  <body>
+
+    <!-- ── HEADER ── -->
+    <header class="app-header">
+      <div class="app-header__logo">
+        <span class="app-header__logo-icon">🍳</span>
+        <span class="app-header__title">Cozinha / Preparo</span>
+      </div>
+      <div class="app-header__actions">
+        <a href="./index.html" class="header-btn" id="btn-back">
+          <i class="fas fa-arrow-left"></i> Voltar
+        </a>
+      </div>
+    </header>
+
+    <!-- ── TOAST CONTAINER ── -->
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+    <!-- ── OVERLAY / BOTTOM SHEET ── -->
+    <div class="overlay" id="overlay"></div>
+    <div class="bottom-sheet" id="confirmSheet" role="dialog" aria-modal="true">
+      <div class="bottom-sheet__handle"></div>
+      <p class="bottom-sheet__title" id="sheetTitle">Confirmar ação</p>
+      <p class="bottom-sheet__desc" id="sheetDesc"></p>
+      <div class="bottom-sheet__actions">
+        <button class="btn btn-primary btn-full" id="sheetConfirm">Confirmar</button>
+        <button class="btn btn-secondary btn-full" id="sheetCancel">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- ── CONTEÚDO PRINCIPAL ── -->
+    <main class="app-main" id="appMain">
+      
+      <!-- Filtro Rápido Cozinha -->
+      <section aria-label="Status dos Pedidos">
+        <div class="summary-scroll" id="kitchenSummaryScroll">
+          <button class="summary-chip active" data-filter="pending" id="chip-pending">
+            <div class="summary-chip__label">Fila</div>
+            <div class="summary-chip__value danger" id="pendingCount">0</div>
+            <div class="summary-chip__sub">pedidos</div>
+          </button>
+          <button class="summary-chip" data-filter="preparing" id="chip-preparing">
+            <div class="summary-chip__label">Preparando</div>
+            <div class="summary-chip__value warning" id="preparingCount">0</div>
+            <div class="summary-chip__sub">em andamento</div>
+          </button>
+          <button class="summary-chip" data-filter="ready" id="chip-ready">
+            <div class="summary-chip__label">Prontos</div>
+            <div class="summary-chip__value success" id="readyCount">0</div>
+            <div class="summary-chip__sub">aguard. entrega</div>
+          </button>
+        </div>
+      </section>
+
+      <!-- Lista de Pedidos (Agrupados por Pessoa) -->
+      <section>
+        <div class="items-list" id="kitchenOrdersList">
+          <!-- Gerado dinamicamente -->
+          <div class="items-empty">
+            <div class="items-empty__icon"><i class="fas fa-concierge-bell"></i></div>
+            <div class="items-empty__text">Carregando pedidos...</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── SCRIPTS ── -->
+    <script type="module" src="./src/script/kitchen.js"></script>
+  </body>
+</html>
