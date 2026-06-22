@@ -262,7 +262,7 @@ document.getElementById('addItemButton').addEventListener('click', async functio
     for (let i = 0; i < localItems.length && count < itemQuantity; i++) {
       if (localItems[i].itemName === itemName && !localItems[i].personName) {
         const itemRef = doc(db, "active_items", localItems[i].id);
-        updatePromises.push(updateDoc(itemRef, {
+        const updatePayload = {
           personName,
           paid,
           delivered,
