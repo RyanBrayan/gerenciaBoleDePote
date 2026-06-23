@@ -93,7 +93,7 @@ document.getElementById('overlay').addEventListener('click', () => closeSheet(fa
 
 // ── Botão voltar ──────────────────────────────────────────────
 
-document.getElementById('btnBack').addEventListener('click', () => {
+document.getElementById('btnBack')?.addEventListener('click', () => {
   window.location.href = './index.html';
 });
 
