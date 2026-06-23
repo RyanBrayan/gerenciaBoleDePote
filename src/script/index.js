@@ -42,9 +42,16 @@ onAuthStateChanged(auth, (user) => {
         showToast("Erro ao conectar no banco de dados", "error");
       });
 
-      // Escuta ativa do catálogo de produtos para sugestões
+      // Escuta ativa do catálogo de produtos para sugestões e estoque
       unsubscribeCatalog = onSnapshot(collection(db, "catalog_products"), (snapshot) => {
         catalogProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        catalogProducts.sort((a, b) => a.name.localeCompare(b.name));
+        
+        const stockDropdown = document.getElementById('stockItemDropdown');
+        if (stockDropdown) {
+          stockDropdown.innerHTML = '<option value="">Selecione um produto do catálogo...</option>' + 
+            catalogProducts.map(p => `<option value="${p.id}">${p.name} - R$ ${(p.currentPrice || 0).toFixed(2).replace('.', ',')}</option>`).join('');
+        }
       });
     });
   } else {
@@ -185,15 +192,23 @@ document.getElementById('qtyPlus').addEventListener('click', () => {
 // ── Adicionar produto ao estoque ──────────────────────────────
 
 document.getElementById('btnAddProduct').addEventListener('click', async function () {
-  const itemName = document.getElementById('itemName').value.trim();
+  const productId = document.getElementById('stockItemDropdown').value;
   const itemQuantity = parseInt(document.getElementById('itemQuantity').value, 10);
-  const itemPrice = parseFloat(document.getElementById('itemPrice').value);
 
-  if (!itemName || !itemQuantity || itemQuantity < 1 || isNaN(itemPrice) || itemPrice < 0) {
-    showToast('Preencha nome, quantidade e preço corretamente.', 'error');
+  if (!productId || !itemQuantity || itemQuantity < 1) {
+    showToast('Preencha o produto e a quantidade corretamente.', 'error');
     vibrate([50, 30, 50]);
     return;
   }
+
+  const catalogItem = catalogProducts.find(p => p.id === productId);
+  if (!catalogItem) {
+    showToast('Produto não encontrado no catálogo.', 'error');
+    return;
+  }
+
+  const itemName = catalogItem.name;
+  const itemPrice = catalogItem.currentPrice || 0;
 
   const todayDate = new Date().toISOString().split('T')[0];
 
@@ -216,9 +231,8 @@ document.getElementById('btnAddProduct').addEventListener('click', async functio
       });
     }
 
-    document.getElementById('itemName').value = '';
+    document.getElementById('stockItemDropdown').value = '';
     document.getElementById('itemQuantity').value = '';
-    document.getElementById('itemPrice').value = '';
 
     // Fechar card após adicionar
     const body = document.getElementById('produtoBody');
@@ -243,7 +257,7 @@ document.getElementById('addItemButton').addEventListener('click', async functio
   const personName = document.getElementById('personNameInput').value.trim();
   const itemQuantity = parseInt(document.getElementById('itemQuantityInput').value, 10) || 1;
   const paid = document.getElementById('paidCheckbox').checked;
-  const delivered = document.getElementById('deliveredCheckbox').checked;
+  const toGo = document.getElementById('toGoCheckbox').checked;
   const observations = document.getElementById('itemObservations').value.trim();
 
   if (!itemName) {
@@ -269,7 +283,8 @@ document.getElementById('addItemButton').addEventListener('click', async functio
         const updatePayload = {
           personName,
           paid,
-          delivered,
+          toGo,
+          delivered: false,
           observations,
           preparationStatus: 'pending',
           saleDate: saleTodayDate,
@@ -279,10 +294,6 @@ document.getElementById('addItemButton').addEventListener('click', async functio
         if (paid) {
           updatePayload.paidBy = currentUser.email;
           updatePayload.paidAt = new Date().toISOString();
-        }
-        if (delivered) {
-          updatePayload.deliveredBy = currentUser.email;
-          updatePayload.deliveredAt = new Date().toISOString();
         }
 
         updatePromises.push(updateDoc(itemRef, updatePayload));
@@ -306,7 +317,7 @@ document.getElementById('addItemButton').addEventListener('click', async functio
     document.getElementById('personNameInput').value = '';
     document.getElementById('itemObservations').value = '';
     document.getElementById('paidCheckbox').checked = false;
-    document.getElementById('deliveredCheckbox').checked = false;
+    document.getElementById('toGoCheckbox').checked = false;
     currentQty = 1;
     document.getElementById('qtyDisplay').textContent = '1';
     document.getElementById('itemQuantityInput').value = '1';
@@ -439,10 +450,8 @@ async function toggleStatus(itemId, field) {
   if (field === 'paid') {
       updateData.paidBy = newValue ? currentUser.email : null;
       updateData.paidAt = newValue ? new Date().toISOString() : null;
-  } else if (field === 'delivered') {
-      updateData.deliveredBy = newValue ? currentUser.email : null;
-      updateData.deliveredAt = newValue ? new Date().toISOString() : null;
   }
+  // Removemos rastreio de quem marcou toGo para simplificar, mas se quiser pode adicionar.
   
   try {
     const itemRef = doc(db, "active_items", itemId);
@@ -450,7 +459,7 @@ async function toggleStatus(itemId, field) {
     vibrate([20]);
 
     const label = field === 'paid' ? (newValue ? 'Marcado como Pago' : 'Marcado como Pendente') :
-                                     (newValue ? 'Marcado como Entregue' : 'Aguardando Entrega');
+                  field === 'toGo' ? (newValue ? 'Marcado Para Levar' : 'Marcado Comer no Local') : 'Status Atualizado';
     showToast(label, newValue ? 'success' : 'warning');
   } catch (err) {
     console.error("Erro ao alterar status:", err);
@@ -560,9 +569,10 @@ function renderItems() {
     const paidIcon = item.paid ? 'fa-check' : 'fa-times';
     const paidLabel = item.paid ? 'Pago' : 'Pendente';
 
-    const delivBadgeClass = item.delivered ? 'badge-delivered' : 'badge-undelivered';
-    const delivIcon = item.delivered ? 'fa-box' : 'fa-clock';
-    const delivLabel = item.delivered ? 'Entregue' : 'Aguardando';
+    const toGoBadgeClass = item.toGo ? 'badge-paid' : 'badge-free';
+    const toGoIcon = 'fa-shopping-bag';
+    const toGoLabel = item.toGo ? 'Levar' : 'Local';
+    const toGoStyle = item.toGo ? 'background: #ea580c; color: white;' : '';
 
     const prepStatus = item.preparationStatus || 'pending';
     const prepBadgeClass = prepStatus === 'ready' ? 'badge-paid' : (prepStatus === 'preparing' ? 'badge-free' : 'badge-unpaid');
@@ -597,8 +607,8 @@ function renderItems() {
           <button class="badge ${paidBadgeClass}" data-id="${item.id}" data-field="paid" aria-label="Alternar pagamento">
             <i class="fas ${paidIcon}"></i> ${paidLabel}
           </button>
-          <button class="badge ${delivBadgeClass}" data-id="${item.id}" data-field="delivered" aria-label="Alternar entrega">
-            <i class="fas ${delivIcon}"></i> ${delivLabel}
+          <button class="badge ${toGoBadgeClass}" style="${toGoStyle}" data-id="${item.id}" data-field="toGo" aria-label="Alternar para levar">
+            <i class="fas ${toGoIcon}"></i> ${toGoLabel}
           </button>
           <span class="badge ${prepBadgeClass}" title="Status do Preparo">
             <i class="fas ${prepIcon}"></i> ${prepLabel}

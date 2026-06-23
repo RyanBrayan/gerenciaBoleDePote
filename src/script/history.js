@@ -336,9 +336,9 @@ function buildSessionCard(session, stats, startOpen) {
 function buildItemRow(item) {
   const paidClass = item.paid ? 'badge-paid' : 'badge-unpaid';
   const paidLabel = item.paid ? '✓ Pago' : '✗ Pendente';
-  const delivClass = item.delivered ? 'badge-delivered' : 'badge-undelivered';
-  const delivLabel = item.delivered ? '📦 Entregue' : '⏳ Aguardando';
   const personName = item.personName || '(sem nome)';
+  
+  const toGoBadge = item.toGo ? `<span class="badge badge-sm badge-paid" style="background: #ea580c; color: white;">🛍️ Levar</span>` : '';
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
@@ -351,7 +351,6 @@ function buildItemRow(item) {
   if (cDate) auditInfo += `Criado: ${cDate} por ${item.createdBy || 'Sistema'}<br>`;
   if (sDate) auditInfo += `Vendido: ${sDate} por ${item.soldBy || 'Sistema'}<br>`;
   if (item.paid && item.paidBy) auditInfo += `Pago por: ${item.paidBy}<br>`;
-  if (item.delivered && item.deliveredBy) auditInfo += `Entregue por: ${item.deliveredBy}<br>`;
   if (item.deleted && item.deletedBy) auditInfo += `<span style="color:var(--clr-danger)">Excluído por: ${item.deletedBy}</span><br>`;
   auditInfo += `</div>`;
 
@@ -365,7 +364,7 @@ function buildItemRow(item) {
       </div>
       <div class="session-item__badges">
         <span class="badge badge-sm ${paidClass}">${paidLabel}</span>
-        <span class="badge badge-sm ${delivClass}">${delivLabel}</span>
+        ${toGoBadge}
       </div>
       <div class="session-item__price">${formatBRLLocal(item.itemPrice)}</div>
     </div>`;

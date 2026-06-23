@@ -183,9 +183,15 @@ function renderOrders() {
       </div>`;
     }
 
+    const hasToGo = order.items.some(i => i.toGo);
+    const toGoHtml = hasToGo ? `<span class="badge badge-paid" style="background: #ea580c; color: white;"><i class="fas fa-shopping-bag"></i> PARA LEVAR</span>` : '';
+
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="font-size: 18px; font-weight: 800; color: var(--clr-text);">${order.personName}</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="font-size: 18px; font-weight: 800; color: var(--clr-text);">${order.personName}</div>
+          ${toGoHtml}
+        </div>
         <div class="badge badge-${order.status === 'ready' ? 'paid' : order.status === 'preparing' ? 'free' : 'unpaid'}">
           ${order.items.length} iten(s)
         </div>
