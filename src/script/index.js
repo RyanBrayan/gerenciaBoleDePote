@@ -383,6 +383,7 @@ document.getElementById('btnCheckout').addEventListener('click', async function 
   }
 
   const saleTodayDate = new Date().toISOString().split('T')[0];
+  const saleGroupId = `${personName}_${Date.now()}`; // Identificador único para agrupar este pedido
   const btn = this;
   btn.disabled = true;
 
@@ -405,6 +406,7 @@ document.getElementById('btnCheckout').addEventListener('click', async function 
             delivered: false,
             observations: cartItem.observations,
             preparationStatus: 'pending',
+            saleGroupId,
             saleDate: saleTodayDate,
             soldBy: currentUser.email,
             soldAt: new Date().toISOString()
@@ -588,19 +590,15 @@ async function toggleStatus(itemId, field) {
 
 async function deleteItem(itemId) {
   const confirmed = await openConfirmSheet(
-    'Mover para Lixeira?',
-    'O item será removido da tela principal e enviado para a lixeira no Histórico.'
+    'Excluir item?',
+    'O item será excluído permanentemente da lista.'
   );
   if (!confirmed) return;
 
   try {
     const itemRef = doc(db, "active_items", itemId);
-    await updateDoc(itemRef, { 
-      deleted: true, 
-      deletedBy: currentUser.email, 
-      deletedAt: new Date().toISOString() 
-    });
-    showToast('Registro movido para a lixeira.', 'info');
+    await deleteDoc(itemRef);
+    showToast('Item excluído.', 'info');
   } catch (err) {
     console.error("Erro ao excluir:", err);
     showToast("Erro ao excluir registro", "error");
@@ -808,7 +806,7 @@ document.getElementById('saveHistory').addEventListener('click', async function 
   }
 });
 
-// ── Limpar tudo ───────────────────────────────────────────────
+// ── Excluir tudo ──────────────────────────────────────────────
 
 document.getElementById('clearAll').addEventListener('click', async function () {
   const items = getItems();
@@ -818,25 +816,42 @@ document.getElementById('clearAll').addEventListener('click', async function () 
   }
 
   const confirmed = await openConfirmSheet(
-    'Mover todos para Lixeira?',
-    'A lista atual será enviada para a lixeira no Histórico.'
+    'Excluir TUDO permanentemente?',
+    `${items.length} itens (incluindo estoque) serão salvos no histórico e depois excluídos permanentemente.`
   );
   if (!confirmed) return;
 
+  const btn = this;
+  btn.disabled = true;
+
   try {
-    const updatePromises = items.map(item => {
-      if (item.deleted) return Promise.resolve();
-      return updateDoc(doc(db, "active_items", item.id), {
-        deleted: true,
-        deletedBy: currentUser.email,
-        deletedAt: new Date().toISOString()
-      });
+    // 1. Salvar tudo no histórico antes de excluir
+    showToast('Salvando no histórico e excluindo...', 'info');
+    const sessionId = Date.now().toString();
+    const sessionDate = new Date().toISOString().split('T')[0];
+
+    const sessionRef = doc(collection(db, "history_sessions"));
+    await setDoc(sessionRef, {
+      sessionId,
+      sessionDate,
+      sessionLabel: "Exclusão Total",
+      eventId: "default",
+      items: items.map(i => ({ ...i })),
+      savedBy: currentUser.email,
+      savedAt: new Date().toISOString()
     });
-    await Promise.all(updatePromises);
-    showToast('Lista enviada para a lixeira.', 'info');
+
+    // 2. Deletar TUDO do active_items (vendas + estoque)
+    const deletePromises = items.map(item => deleteDoc(doc(db, "active_items", item.id)));
+    await Promise.all(deletePromises);
+
+    showToast('Tudo foi excluído e salvo no histórico!', 'success');
+    vibrate([30, 20, 60]);
   } catch (err) {
-    console.error("Erro ao limpar:", err);
-    showToast('Erro ao limpar a lista.', 'error');
+    console.error("Erro ao excluir tudo:", err);
+    showToast('Erro ao excluir.', 'error');
+  } finally {
+    btn.disabled = false;
   }
 });
 

@@ -40,35 +40,26 @@ onAuthStateChanged(auth, (user) => {
       // Filtrar apenas itens vendidos e não deletados
       const validItems = items.filter(i => i.personName && !i.deleted);
       
-      // Agrupar por pessoa
+      // Agrupar por saleGroupId (ou personName como fallback para itens antigos)
       const groups = {};
       validItems.forEach(item => {
-        if (!groups[item.personName]) {
-          groups[item.personName] = {
+        const groupKey = item.saleGroupId || item.personName;
+        if (!groups[groupKey]) {
+          groups[groupKey] = {
             personName: item.personName,
+            saleGroupId: groupKey,
             items: [],
             status: 'delivered' // Assume entregue, a não ser que tenha algo não entregue
           };
         }
-        groups[item.personName].items.push(item);
-        
-        // Na entrega, queremos ver itens que já saíram da cozinha (ready) mas não foram entregues,
-        // ou já foram entregues (para a aba de histórico do dia).
-        // Se a pessoa tem QUALQUER item que não foi entregue E está pronto ou pendente/preparando,
-        // agrupamos como 'ready' (aguardando) se ao menos 1 estiver pronto e não entregue.
-        // Se não foi entregue mas nem pronto tá, não deveria nem aparecer aqui, 
-        // mas para facilitar, só mostraremos os "Aguardando" onde TUDO está pronto.
+        groups[groupKey].items.push(item);
         
         if (!item.delivered) {
-          groups[item.personName].status = 'ready'; // Precisa entregar
+          groups[groupKey].status = 'ready'; // Precisa entregar
         }
       });
       
-      // Opcional: Só mostrar na tela de entregas se TUDO da pessoa já estiver "ready" da cozinha,
-      // ou se quiser entregar parcial, pode mostrar. Vamos focar nos pedidos prontos:
-      // O filtro real para a tela de Entregas: 
-      // Se não está entregue E tem algo que não está "ready", consideramos ainda na cozinha.
-      // Então vamos filtrar os grupos para retirar quem ainda tem itens "pending" ou "preparing".
+      // Filtrar grupos para a tela de entregas
       const deliveryOrders = Object.values(groups).filter(order => {
         // Se a pessoa já tem tudo delivered, OK vai pra aba Entregues.
         if (order.status === 'delivered') return true;
@@ -165,7 +156,7 @@ function renderOrders() {
 
     let actionBtnHtml = '';
     if (order.status === 'ready') {
-      actionBtnHtml = `<button class="btn btn-primary btn-full btn-deliver" data-person="${order.personName}">
+      actionBtnHtml = `<button class="btn btn-primary btn-full btn-deliver" data-group="${order.saleGroupId}">
         <i class="fas fa-motorcycle"></i> Confirmar Entrega
       </button>`;
     } else {
@@ -206,14 +197,14 @@ function renderOrders() {
 
   // Eventos de botão
   body.querySelectorAll('.btn-deliver').forEach(btn => {
-    btn.addEventListener('click', () => markAsDelivered(btn.dataset.person));
+    btn.addEventListener('click', () => markAsDelivered(btn.dataset.group));
   });
 }
 
 // ── Atualizar Status ───────────────────────────────────────────
 
-async function markAsDelivered(personName) {
-  const order = localOrders.find(o => o.personName === personName);
+async function markAsDelivered(groupId) {
+  const order = localOrders.find(o => o.saleGroupId === groupId);
   if (!order) return;
 
   try {
@@ -230,7 +221,7 @@ async function markAsDelivered(personName) {
 
     await Promise.all(updatePromises);
     vibrate([30, 20, 60]);
-    showToast(`Pedido de ${personName} marcado como Entregue!`, 'success');
+    showToast(`Pedido de ${order.personName} marcado como Entregue!`, 'success');
   } catch (err) {
     console.error("Erro ao entregar pedido:", err);
     showToast("Erro ao confirmar entrega", "error");

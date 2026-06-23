@@ -42,24 +42,26 @@ onAuthStateChanged(auth, (user) => {
       // Filtrar apenas itens vendidos (que tem personName) e não deletados e não entregues (opcional)
       const validItems = items.filter(i => i.personName && !i.deleted && !i.delivered);
       
-      // Agrupar por pessoa
+      // Agrupar por saleGroupId (ou personName como fallback para itens antigos sem saleGroupId)
       const groups = {};
       validItems.forEach(item => {
-        if (!groups[item.personName]) {
-          groups[item.personName] = {
+        const groupKey = item.saleGroupId || item.personName;
+        if (!groups[groupKey]) {
+          groups[groupKey] = {
             personName: item.personName,
+            saleGroupId: groupKey,
             items: [],
             status: 'ready' // Começa assumindo que tá pronto
           };
         }
-        groups[item.personName].items.push(item);
+        groups[groupKey].items.push(item);
         
         // Define o status do grupo: se tiver algo pending, é pending. Se tiver algo preparing, é preparing.
         const itemStatus = item.preparationStatus || 'pending';
         if (itemStatus === 'pending') {
-          groups[item.personName].status = 'pending';
-        } else if (itemStatus === 'preparing' && groups[item.personName].status !== 'pending') {
-          groups[item.personName].status = 'preparing';
+          groups[groupKey].status = 'pending';
+        } else if (itemStatus === 'preparing' && groups[groupKey].status !== 'pending') {
+          groups[groupKey].status = 'preparing';
         }
       });
       
@@ -73,14 +75,14 @@ onAuthStateChanged(auth, (user) => {
       });
 
       // Checar por novos pedidos pendentes
-      const currentPendingNames = new Set(localOrders.filter(o => o.status === 'pending').map(o => o.personName));
+      const currentPendingIds = new Set(localOrders.filter(o => o.status === 'pending').map(o => o.saleGroupId));
       if (!isFirstLoad) {
         let hasNew = false;
-        currentPendingNames.forEach(name => {
-          if (!previousPendingNames.has(name)) {
+        currentPendingIds.forEach(gid => {
+          if (!previousPendingNames.has(gid)) {
             hasNew = true;
             // Marcar temporariamente para o render saber que é novo
-            const order = localOrders.find(o => o.personName === name);
+            const order = localOrders.find(o => o.saleGroupId === gid);
             if (order) order.isNew = true;
           }
         });
@@ -90,7 +92,7 @@ onAuthStateChanged(auth, (user) => {
         }
       }
       
-      previousPendingNames = currentPendingNames;
+      previousPendingNames = currentPendingIds;
       isFirstLoad = false;
 
       renderOrders();
@@ -170,11 +172,11 @@ function renderOrders() {
 
     let actionBtnHtml = '';
     if (order.status === 'pending') {
-      actionBtnHtml = `<button class="btn btn-primary btn-full btn-start-prep" data-person="${order.personName}">
+      actionBtnHtml = `<button class="btn btn-primary btn-full btn-start-prep" data-group="${order.saleGroupId}">
         <i class="fas fa-fire-burner"></i> Iniciar Preparo
       </button>`;
     } else if (order.status === 'preparing') {
-      actionBtnHtml = `<button class="btn btn-success btn-full btn-finish-prep" data-person="${order.personName}">
+      actionBtnHtml = `<button class="btn btn-success btn-full btn-finish-prep" data-group="${order.saleGroupId}">
         <i class="fas fa-check"></i> Marcar como Pronto
       </button>`;
     } else {
@@ -211,18 +213,18 @@ function renderOrders() {
 
   // Eventos de botão
   body.querySelectorAll('.btn-start-prep').forEach(btn => {
-    btn.addEventListener('click', () => updateOrderStatus(btn.dataset.person, 'preparing'));
+    btn.addEventListener('click', () => updateOrderStatus(btn.dataset.group, 'preparing'));
   });
 
   body.querySelectorAll('.btn-finish-prep').forEach(btn => {
-    btn.addEventListener('click', () => updateOrderStatus(btn.dataset.person, 'ready'));
+    btn.addEventListener('click', () => updateOrderStatus(btn.dataset.group, 'ready'));
   });
 }
 
 // ── Atualizar Status ───────────────────────────────────────────
 
-async function updateOrderStatus(personName, newStatus) {
-  const order = localOrders.find(o => o.personName === personName);
+async function updateOrderStatus(groupId, newStatus) {
+  const order = localOrders.find(o => o.saleGroupId === groupId);
   if (!order) return;
 
   try {
@@ -243,7 +245,7 @@ async function updateOrderStatus(personName, newStatus) {
 
     await Promise.all(updatePromises);
     vibrate([30, 20, 30]);
-    showToast(`Pedido de ${personName} atualizado para ${newStatus === 'ready' ? 'Pronto' : 'Preparando'}.`, 'success');
+    showToast(`Pedido de ${order.personName} atualizado para ${newStatus === 'ready' ? 'Pronto' : 'Preparando'}.`, 'success');
   } catch (err) {
     console.error("Erro ao atualizar status do pedido:", err);
     showToast("Erro ao atualizar status", "error");
