@@ -15,6 +15,7 @@ let unsubscribe = null;
 let unsubscribeCatalog = null;
 let roleUnsubscribe = null;
 let catalogProducts = [];
+let currentCart = [];
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -180,21 +181,8 @@ document.querySelectorAll('.card-header').forEach(header => {
 // ── Calculadora de Troco ──────────────────────────────────────
 
 function updateTrocoHelper() {
-  const productName = document.getElementById('itemDropdown').value;
-  const qty = parseInt(document.getElementById('itemQuantityInput').value, 10) || 1;
+  const total = currentCart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
   
-  let unitPrice = 0;
-  if (productName) {
-    const catalogItem = catalogProducts.find(p => p.name === productName);
-    if (catalogItem) {
-      unitPrice = catalogItem.currentPrice || 0;
-    } else {
-      const active = localItems.find(i => i.itemName === productName);
-      if (active) unitPrice = active.price || 0;
-    }
-  }
-
-  const total = unitPrice * qty;
   const totalEl = document.getElementById('saleTotalValue');
   if (totalEl) totalEl.textContent = total.toFixed(2).replace('.', ',');
 
@@ -209,10 +197,14 @@ function updateTrocoHelper() {
   }
   const changeEl = document.getElementById('saleChangeValue');
   if (changeEl) changeEl.textContent = change.toFixed(2).replace('.', ',');
+
+  const btnCheckout = document.getElementById('btnCheckout');
+  if (btnCheckout) {
+    btnCheckout.disabled = currentCart.length === 0;
+  }
 }
 
 document.getElementById('amountReceivedInput')?.addEventListener('input', updateTrocoHelper);
-
 // ── Controle de quantidade (+/−) ──────────────────────────────
 
 document.getElementById('qtyMinus').addEventListener('click', () => {
@@ -296,83 +288,160 @@ document.getElementById('btnAddProduct').addEventListener('click', async functio
 
 // ── Registrar venda ───────────────────────────────────────────
 
-document.getElementById('addItemButton').addEventListener('click', async function () {
+document.getElementById('btnAddToCart').addEventListener('click', function () {
   const itemName = document.getElementById('itemDropdown').value;
-  const personName = document.getElementById('personNameInput').value.trim();
   const itemQuantity = parseInt(document.getElementById('itemQuantityInput').value, 10) || 1;
-  const paid = document.getElementById('paidCheckbox').checked;
-  const toGo = document.getElementById('toGoCheckbox').checked;
   const observations = document.getElementById('itemObservations').value.trim();
 
   if (!itemName) {
     showToast('Selecione um produto.', 'error');
     return;
   }
+
+  // Get Unit Price
+  let unitPrice = 0;
+  const catalogItem = catalogProducts.find(p => p.name === itemName);
+  if (catalogItem) {
+    unitPrice = catalogItem.currentPrice || 0;
+  } else {
+    const active = localItems.find(i => i.itemName === itemName);
+    if (active) unitPrice = active.price || 0;
+  }
+
+  // Check availability
+  const availableCount = localItems.filter(i => i.itemName === itemName && !i.personName).length;
+  const alreadyInCart = currentCart.filter(c => c.itemName === itemName).reduce((sum, c) => sum + c.quantity, 0);
+
+  if (alreadyInCart + itemQuantity > availableCount) {
+    showToast(`Não há ${itemQuantity} disponíveis. Apenas ${availableCount - alreadyInCart} sobrando.`, 'warning');
+    return;
+  }
+
+  currentCart.push({
+    id: Date.now().toString(),
+    itemName,
+    quantity: itemQuantity,
+    observations,
+    unitPrice
+  });
+
+  // Reset Add form
+  document.getElementById('itemObservations').value = '';
+  currentQty = 1;
+  document.getElementById('qtyDisplay').textContent = '1';
+  document.getElementById('itemQuantityInput').value = '1';
+  vibrate([20]);
+
+  renderCart();
+});
+
+function renderCart() {
+  const container = document.getElementById('cartItemsContainer');
+  const badge = document.getElementById('cartCountBadge');
+
+  if (currentCart.length === 0) {
+    container.innerHTML = '<div style="text-align: center; color: var(--clr-text-muted); font-size: 13px; padding: 12px 0;">Sua sacola está vazia.</div>';
+    badge.style.display = 'none';
+  } else {
+    container.innerHTML = currentCart.map((item, index) => `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 8px; background: var(--clr-bg); border-radius: var(--radius-sm); border-left: 3px solid var(--clr-brand);">
+        <div>
+          <div style="font-weight: 700; font-size: 14px; color: var(--clr-text);">${item.quantity}x ${item.itemName}</div>
+          ${item.observations ? `<div style="font-size: 11px; color: var(--clr-brand); margin-top: 2px;">Obs: ${item.observations}</div>` : ''}
+          <div style="font-size: 12px; font-weight: 600; color: var(--clr-success); margin-top: 4px;">Subtotal: R$ ${(item.unitPrice * item.quantity).toFixed(2).replace('.', ',')}</div>
+        </div>
+        <button class="btn btn-secondary" style="padding: 4px 8px; color: var(--clr-danger);" onclick="removeFromCart(${index})">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    `).join('');
+    badge.textContent = `${currentCart.length} itens`;
+    badge.style.display = 'block';
+  }
+
+  updateTrocoHelper();
+}
+
+window.removeFromCart = function(index) {
+  currentCart.splice(index, 1);
+  renderCart();
+};
+
+document.getElementById('btnCheckout').addEventListener('click', async function () {
+  if (currentCart.length === 0) {
+    showToast('A sacola está vazia.', 'error');
+    return;
+  }
+
+  const personName = document.getElementById('personNameInput').value.trim();
+  const paid = document.getElementById('paidCheckbox').checked;
+  const toGo = document.getElementById('toGoCheckbox').checked;
+
   if (!personName) {
-    showToast('Informe o nome da pessoa.', 'error');
+    showToast('Informe o nome do cliente.', 'error');
     return;
   }
 
   const saleTodayDate = new Date().toISOString().split('T')[0];
-  let count = 0;
-
   const btn = this;
   btn.disabled = true;
 
   try {
     const updatePromises = [];
-    for (let i = 0; i < localItems.length && count < itemQuantity; i++) {
-      if (localItems[i].itemName === itemName && !localItems[i].personName) {
-        const itemRef = doc(db, "active_items", localItems[i].id);
-        const updatePayload = {
-          personName,
-          paid,
-          toGo,
-          delivered: false,
-          observations,
-          preparationStatus: 'pending',
-          saleDate: saleTodayDate,
-          soldBy: currentUser.email,
-          soldAt: new Date().toISOString()
-        };
-        if (paid) {
-          updatePayload.paidBy = currentUser.email;
-          updatePayload.paidAt = new Date().toISOString();
+    
+    // Para cada item no carrinho, achar N itens disponíveis no banco
+    for (const cartItem of currentCart) {
+      let assignedCount = 0;
+      for (let i = 0; i < localItems.length && assignedCount < cartItem.quantity; i++) {
+        if (localItems[i].itemName === cartItem.itemName && !localItems[i].personName) {
+          // Marca esse item para não ser pego de novo no loop atual do carrinho
+          localItems[i].personName = personName; 
+          
+          const itemRef = doc(db, "active_items", localItems[i].id);
+          const updatePayload = {
+            personName,
+            paid,
+            toGo,
+            delivered: false,
+            observations: cartItem.observations,
+            preparationStatus: 'pending',
+            saleDate: saleTodayDate,
+            soldBy: currentUser.email,
+            soldAt: new Date().toISOString()
+          };
+          if (paid) {
+            updatePayload.paidBy = currentUser.email;
+            updatePayload.paidAt = new Date().toISOString();
+          }
+          updatePromises.push(updateDoc(itemRef, updatePayload));
+          assignedCount++;
         }
-
-        updatePromises.push(updateDoc(itemRef, updatePayload));
-        count++;
       }
-    }
-
-    if (count === 0) {
-      showToast('Nenhuma unidade disponível deste produto.', 'warning');
-      btn.disabled = false;
-      return;
+      
+      if (assignedCount < cartItem.quantity) {
+        throw new Error(`Estoque insuficiente de ${cartItem.itemName} no meio do processamento.`);
+      }
     }
 
     await Promise.all(updatePromises);
 
-    // Salvar nome da pessoa isolado para autocomplete futuramente, se desejado
+    // Salvar nome da pessoa
     const personRef = doc(collection(db, "person_names"));
     setDoc(personRef, { name: personName, eventId: "default" }).catch(console.error);
 
-    // Reset form
+    // Reset geral
+    currentCart = [];
     document.getElementById('personNameInput').value = '';
-    document.getElementById('itemObservations').value = '';
     document.getElementById('paidCheckbox').checked = false;
     document.getElementById('toGoCheckbox').checked = false;
-    currentQty = 1;
-    document.getElementById('qtyDisplay').textContent = '1';
-    document.getElementById('itemQuantityInput').value = '1';
     document.getElementById('amountReceivedInput').value = '';
-    updateTrocoHelper();
+    renderCart();
 
-    showToast(`Venda de ${count}x "${itemName}" para ${personName} registrada!`, 'success');
+    showToast(`Venda para ${personName} registrada!`, 'success');
     vibrate([30, 20, 30]);
   } catch (err) {
-    console.error("Erro ao registrar venda:", err);
-    showToast("Erro ao registrar venda", "error");
+    console.error("Erro ao finalizar venda:", err);
+    showToast("Erro ao finalizar. Estoque insuficiente?", "error");
   } finally {
     btn.disabled = false;
   }

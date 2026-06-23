@@ -164,74 +164,100 @@
           <i class="fas fa-chevron-up card-header__chevron open" id="vendaChevron"></i>
         </div>
         <div class="card-body" id="vendaBody">
-          <div class="form-group">
-            <label class="form-label" for="itemDropdown">Produto</label>
-            <div class="form-select-wrap">
-              <select class="form-input" id="itemDropdown">
-                <option value="">Selecione um produto...</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="personNameInput">Nome da Pessoa</label>
-            <input type="text" class="form-input" id="personNameInput"
-              placeholder="Nome de quem comprou"
-              autocomplete="off"
-              list="personNamesList" />
-            <datalist id="personNamesList"></datalist>
-          </div>
-          <div class="form-group" style="margin-top: 16px;">
-            <label class="form-label" for="itemObservations">Observações (Sugestões)</label>
-            <input type="text" class="form-input" id="itemObservations" placeholder="Ex: Sem purê..." autocomplete="off" />
-            <div id="suggestionChipsContainer" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;"></div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Quantidade</label>
-            <div class="qty-control">
-              <button class="qty-btn" id="qtyMinus" aria-label="Diminuir quantidade" type="button">−</button>
-              <div class="qty-display" id="qtyDisplay">1</div>
-              <button class="qty-btn" id="qtyPlus" aria-label="Aumentar quantidade" type="button">+</button>
-            </div>
-            <input type="hidden" id="itemQuantityInput" value="1" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Status do Pedido</label>
-            <div class="toggle-group">
-              <div class="toggle-item">
-                <label class="toggle-switch">
-                  <input type="checkbox" id="paidCheckbox" />
-                  <span class="toggle-track"></span>
-                </label>
-                <span class="toggle-label">Pago</span>
-              </div>
-              <div class="toggle-item">
-                <label class="toggle-switch">
-                  <input type="checkbox" id="toGoCheckbox" />
-                  <span class="toggle-track"></span>
-                </label>
-                <span class="toggle-label">Para Levar?</span>
+          <!-- ETAPA 1: ADICIONAR PRODUTO -->
+          <div style="padding-bottom: 16px; border-bottom: 2px dashed var(--clr-border);">
+            <div class="form-group">
+              <label class="form-label" for="itemDropdown">Produto</label>
+              <div class="form-select-wrap">
+                <select class="form-input" id="itemDropdown">
+                  <option value="">Selecione um produto...</option>
+                </select>
               </div>
             </div>
+            
+            <div class="form-group" style="margin-top: 16px;">
+              <label class="form-label" for="itemObservations">Observações (Sugestões)</label>
+              <input type="text" class="form-input" id="itemObservations" placeholder="Ex: Sem purê..." autocomplete="off" />
+              <div id="suggestionChipsContainer" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;"></div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Quantidade</label>
+              <div class="qty-control">
+                <button class="qty-btn" id="qtyMinus" aria-label="Diminuir quantidade" type="button">−</button>
+                <div class="qty-display" id="qtyDisplay">1</div>
+                <button class="qty-btn" id="qtyPlus" aria-label="Aumentar quantidade" type="button">+</button>
+              </div>
+              <input type="hidden" id="itemQuantityInput" value="1" />
+            </div>
+
+            <button class="btn btn-secondary btn-full" id="btnAddToCart">
+              <i class="fas fa-plus"></i> Adicionar à Sacola
+            </button>
           </div>
-          <!-- Helper de Troco -->
-          <div style="background: var(--clr-brand-xlight); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--clr-text);">Total a Pagar:</span>
-              <span style="font-size: 18px; font-weight: 800; color: var(--clr-brand);">R$ <span id="saleTotalValue">0,00</span></span>
+
+          <!-- ETAPA 2: SACOLA (CARRINHO) -->
+          <div style="padding: 16px 0; border-bottom: 2px dashed var(--clr-border);">
+            <div style="font-weight: 800; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <span>🛒 Minha Sacola</span>
+              <span class="badge badge-paid" id="cartCountBadge" style="display: none;">0 itens</span>
             </div>
-            <div class="form-group" style="margin-bottom: 8px;">
-              <label class="form-label" style="font-size: 11px;">Valor Recebido (R$) - Opcional</label>
-              <input type="number" class="form-input" id="amountReceivedInput" placeholder="Ex: 50,00" min="0" step="0.01" inputmode="decimal" style="padding: 8px;" />
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-weight: 600; color: var(--clr-text);">Troco:</span>
-              <span style="font-size: 18px; font-weight: 800; color: var(--clr-success);">R$ <span id="saleChangeValue">0,00</span></span>
+            <div id="cartItemsContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+              <div style="text-align: center; color: var(--clr-text-muted); font-size: 13px; padding: 12px 0;">Sua sacola está vazia.</div>
             </div>
           </div>
 
-          <button class="btn btn-primary btn-full" id="addItemButton">
-            <i class="fas fa-check"></i> Registrar Venda
-          </button>
+          <!-- ETAPA 3: FINALIZAR PEDIDO -->
+          <div style="padding-top: 16px;">
+            <div class="form-group">
+              <label class="form-label" for="personNameInput">Nome do Cliente</label>
+              <input type="text" class="form-input" id="personNameInput"
+                placeholder="Ex: Rabico"
+                autocomplete="off"
+                list="personNamesList" />
+              <datalist id="personNamesList"></datalist>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Status do Pedido</label>
+              <div class="toggle-group">
+                <div class="toggle-item">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="paidCheckbox" />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="toggle-label">Pago</span>
+                </div>
+                <div class="toggle-item">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="toGoCheckbox" />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="toggle-label">Para Levar?</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Helper de Troco -->
+            <div style="background: var(--clr-brand-xlight); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-weight: 600; color: var(--clr-text);">Total a Pagar:</span>
+                <span style="font-size: 18px; font-weight: 800; color: var(--clr-brand);">R$ <span id="saleTotalValue">0,00</span></span>
+              </div>
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label class="form-label" style="font-size: 11px;">Valor Recebido (R$) - Opcional</label>
+                <input type="number" class="form-input" id="amountReceivedInput" placeholder="Ex: 50,00" min="0" step="0.01" inputmode="decimal" style="padding: 8px;" />
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 600; color: var(--clr-text);">Troco:</span>
+                <span style="font-size: 18px; font-weight: 800; color: var(--clr-success);">R$ <span id="saleChangeValue">0,00</span></span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary btn-full" id="btnCheckout" disabled>
+              <i class="fas fa-check-circle"></i> Finalizar Venda
+            </button>
+          </div>
         </div>
       </div>
 
