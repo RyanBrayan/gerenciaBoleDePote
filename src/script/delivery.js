@@ -1,11 +1,9 @@
 import { auth, db, onAuthStateChanged, collection, onSnapshot, query, where, updateDoc, doc, ALLOWED_EMAILS } from './firebase-config.js';
 
 let localOrders = []; // Agrupado por pessoa
-let currentFilter = 'pending';
+let currentFilter = 'ready'; // 'ready' (Aguardando Entrega) ou 'delivered' (Entregues)
 let currentUser = null;
 let unsubscribe = null;
-let previousPendingNames = new Set();
-let isFirstLoad = true;
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -42,8 +40,8 @@ onAuthStateChanged(auth, (user) => {
     unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       
-      // Filtrar apenas itens vendidos (que tem personName) e não deletados e não entregues (opcional)
-      const validItems = items.filter(i => i.personName && !i.deleted && !i.delivered);
+      // Filtrar apenas itens vendidos e não deletados
+      const validItems = items.filter(i => i.personName && !i.deleted);
       
       // Agrupar por pessoa
       const groups = {};
@@ -52,21 +50,40 @@ onAuthStateChanged(auth, (user) => {
           groups[item.personName] = {
             personName: item.personName,
             items: [],
-            status: 'ready' // Começa assumindo que tá pronto
+            status: 'delivered' // Assume entregue, a não ser que tenha algo não entregue
           };
         }
         groups[item.personName].items.push(item);
         
-        // Define o status do grupo: se tiver algo pending, é pending. Se tiver algo preparing, é preparing.
-        const itemStatus = item.preparationStatus || 'pending';
-        if (itemStatus === 'pending') {
-          groups[item.personName].status = 'pending';
-        } else if (itemStatus === 'preparing' && groups[item.personName].status !== 'pending') {
-          groups[item.personName].status = 'preparing';
+        // Na entrega, queremos ver itens que já saíram da cozinha (ready) mas não foram entregues,
+        // ou já foram entregues (para a aba de histórico do dia).
+        // Se a pessoa tem QUALQUER item que não foi entregue E está pronto ou pendente/preparando,
+        // agrupamos como 'ready' (aguardando) se ao menos 1 estiver pronto e não entregue.
+        // Se não foi entregue mas nem pronto tá, não deveria nem aparecer aqui, 
+        // mas para facilitar, só mostraremos os "Aguardando" onde TUDO está pronto.
+        
+        if (!item.delivered) {
+          groups[item.personName].status = 'ready'; // Precisa entregar
         }
       });
       
-      localOrders = Object.values(groups);
+      // Opcional: Só mostrar na tela de entregas se TUDO da pessoa já estiver "ready" da cozinha,
+      // ou se quiser entregar parcial, pode mostrar. Vamos focar nos pedidos prontos:
+      // O filtro real para a tela de Entregas: 
+      // Se não está entregue E tem algo que não está "ready", consideramos ainda na cozinha.
+      // Então vamos filtrar os grupos para retirar quem ainda tem itens "pending" ou "preparing".
+      const deliveryOrders = Object.values(groups).filter(order => {
+        // Se a pessoa já tem tudo delivered, OK vai pra aba Entregues.
+        if (order.status === 'delivered') return true;
+        
+        // Se ela precisa de entrega (ready), só mostramos se nenhum item estiver pending/preparing.
+        const temNaCozinha = order.items.some(i => i.preparationStatus === 'pending' || i.preparationStatus === 'preparing');
+        if (temNaCozinha) return false; // Ainda não sai pra entrega
+        
+        return true;
+      });
+      
+      localOrders = deliveryOrders;
       
       // Ordenar: primeiro os mais antigos. Usamos o createdAt do primeiro item.
       localOrders.sort((a, b) => {
@@ -75,30 +92,9 @@ onAuthStateChanged(auth, (user) => {
         return timeA - timeB;
       });
 
-      // Checar por novos pedidos pendentes
-      const currentPendingNames = new Set(localOrders.filter(o => o.status === 'pending').map(o => o.personName));
-      if (!isFirstLoad) {
-        let hasNew = false;
-        currentPendingNames.forEach(name => {
-          if (!previousPendingNames.has(name)) {
-            hasNew = true;
-            // Marcar temporariamente para o render saber que é novo
-            const order = localOrders.find(o => o.personName === name);
-            if (order) order.isNew = true;
-          }
-        });
-        if (hasNew) {
-          showToast("Novo pedido na fila!", "info");
-          vibrate([50, 50, 50]);
-        }
-      }
-      
-      previousPendingNames = currentPendingNames;
-      isFirstLoad = false;
-
       renderOrders();
     }, (error) => {
-      console.error("Erro ao carregar dados em tempo real na cozinha:", error);
+      console.error("Erro ao carregar dados em tempo real nas entregas:", error);
       showToast("Erro ao conectar no banco de dados", "error");
     });
 
@@ -122,16 +118,14 @@ document.querySelectorAll('.summary-chip[data-filter]').forEach(chip => {
 // ── Renderização ──────────────────────────────────────────────
 
 function renderOrders() {
-  const body = document.getElementById('kitchenOrdersList');
+  const body = document.getElementById('deliveryOrdersList');
   
   // Atualizar contadores
-  const pendingCount = localOrders.filter(o => o.status === 'pending').length;
-  const preparingCount = localOrders.filter(o => o.status === 'preparing').length;
   const readyCount = localOrders.filter(o => o.status === 'ready').length;
+  const deliveredCount = localOrders.filter(o => o.status === 'delivered').length;
   
-  document.getElementById('pendingCount').textContent = pendingCount;
-  document.getElementById('preparingCount').textContent = preparingCount;
   document.getElementById('readyCount').textContent = readyCount;
+  document.getElementById('deliveredCount').textContent = deliveredCount;
 
   // Filtrar
   const filtered = localOrders.filter(o => o.status === currentFilter);
@@ -140,7 +134,7 @@ function renderOrders() {
     body.innerHTML = `
       <div class="items-empty">
         <div class="items-empty__icon"><i class="fas fa-check-circle"></i></div>
-        <div class="items-empty__text">Nenhum pedido nesta lista</div>
+        <div class="items-empty__text">Nenhuma entrega por aqui</div>
       </div>`;
     return;
   }
@@ -149,7 +143,7 @@ function renderOrders() {
 
   filtered.forEach(order => {
     const card = document.createElement('div');
-    card.className = `item-card status-${order.status === 'ready' ? 'ok' : order.status === 'preparing' ? 'partial' : 'pending'} ${order.isNew ? 'highlight-new' : ''}`;
+    card.className = `item-card status-${order.status === 'delivered' ? 'ok' : 'pending'}`;
     card.style.flexDirection = 'column';
     card.style.alignItems = 'stretch';
     card.style.gap = '12px';
@@ -168,26 +162,26 @@ function renderOrders() {
     }).join('');
 
     let actionBtnHtml = '';
-    if (order.status === 'pending') {
-      actionBtnHtml = `<button class="btn btn-primary btn-full btn-start-prep" data-person="${order.personName}">
-        <i class="fas fa-fire-burner"></i> Iniciar Preparo
-      </button>`;
-    } else if (order.status === 'preparing') {
-      actionBtnHtml = `<button class="btn btn-success btn-full btn-finish-prep" data-person="${order.personName}">
-        <i class="fas fa-check"></i> Marcar como Pronto
+    if (order.status === 'ready') {
+      actionBtnHtml = `<button class="btn btn-primary btn-full btn-deliver" data-person="${order.personName}">
+        <i class="fas fa-motorcycle"></i> Confirmar Entrega
       </button>`;
     } else {
       actionBtnHtml = `<div style="text-align: center; color: var(--clr-success); font-weight: 600;">
-        <i class="fas fa-box"></i> Aguardando entrega pelo balcão
+        <i class="fas fa-check-circle"></i> Pedido Entregue
       </div>`;
     }
+
+    // Badge pago / pendente pra saber se tem que cobrar na entrega
+    const pendentePagamento = order.items.some(i => !i.paid);
+    const paymentBadgeHtml = pendentePagamento 
+      ? `<div class="badge badge-unpaid"><i class="fas fa-exclamation-circle"></i> Cobrar Cliente</div>`
+      : `<div class="badge badge-paid"><i class="fas fa-check"></i> Pago</div>`;
 
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div style="font-size: 18px; font-weight: 800; color: var(--clr-text);">${order.personName}</div>
-        <div class="badge badge-${order.status === 'ready' ? 'paid' : order.status === 'preparing' ? 'free' : 'unpaid'}">
-          ${order.items.length} iten(s)
-        </div>
+        ${paymentBadgeHtml}
       </div>
       
       <div style="background: var(--clr-bg); padding: 8px; border-radius: var(--radius-sm);">
@@ -203,42 +197,34 @@ function renderOrders() {
   });
 
   // Eventos de botão
-  body.querySelectorAll('.btn-start-prep').forEach(btn => {
-    btn.addEventListener('click', () => updateOrderStatus(btn.dataset.person, 'preparing'));
-  });
-
-  body.querySelectorAll('.btn-finish-prep').forEach(btn => {
-    btn.addEventListener('click', () => updateOrderStatus(btn.dataset.person, 'ready'));
+  body.querySelectorAll('.btn-deliver').forEach(btn => {
+    btn.addEventListener('click', () => markAsDelivered(btn.dataset.person));
   });
 }
 
 // ── Atualizar Status ───────────────────────────────────────────
 
-async function updateOrderStatus(personName, newStatus) {
+async function markAsDelivered(personName) {
   const order = localOrders.find(o => o.personName === personName);
   if (!order) return;
 
   try {
     const updatePromises = order.items.map(item => {
+      if (item.delivered) return Promise.resolve(); // Já entregue
+      
       const itemRef = doc(db, "active_items", item.id);
-      const payload = { preparationStatus: newStatus };
-      
-      if (newStatus === 'preparing') {
-        payload.startedPreparingBy = currentUser.email;
-        payload.startedPreparingAt = new Date().toISOString();
-      } else if (newStatus === 'ready') {
-        payload.finishedPreparingBy = currentUser.email;
-        payload.finishedPreparingAt = new Date().toISOString();
-      }
-      
-      return updateDoc(itemRef, payload);
+      return updateDoc(itemRef, { 
+        delivered: true,
+        deliveredBy: currentUser.email,
+        deliveredAt: new Date().toISOString()
+      });
     });
 
     await Promise.all(updatePromises);
-    vibrate([30, 20, 30]);
-    showToast(`Pedido de ${personName} atualizado para ${newStatus === 'ready' ? 'Pronto' : 'Preparando'}.`, 'success');
+    vibrate([30, 20, 60]);
+    showToast(`Pedido de ${personName} marcado como Entregue!`, 'success');
   } catch (err) {
-    console.error("Erro ao atualizar status do pedido:", err);
-    showToast("Erro ao atualizar status", "error");
+    console.error("Erro ao entregar pedido:", err);
+    showToast("Erro ao confirmar entrega", "error");
   }
 }

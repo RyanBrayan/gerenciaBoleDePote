@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Tela de cozinha para preparo de pedidos." />
+    <meta name="description" content="Tela de entregas para os pedidos prontos." />
     <meta name="theme-color" content="#ea580c" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Cozinha" />
-    <title>Cozinha - Gerenciamento</title>
+    <meta name="apple-mobile-web-app-title" content="Entregas" />
+    <title>Entregas - Gerenciamento</title>
     <link rel="manifest" href="./manifest.json" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="./src/css/style.css" />
@@ -22,7 +22,7 @@
         <button class="header-btn" id="sidebarToggle" aria-label="Menu" style="margin-right: var(--space-2); padding: 0; min-width: 40px;">
           <i class="fas fa-bars" style="font-size: 18px;"></i>
         </button>
-        <span class="app-header__title">Cozinha / Preparo</span>
+        <span class="app-header__title">Entregas</span>
       </div>
     </header>
 
@@ -46,48 +46,30 @@
     <!-- ── TOAST CONTAINER ── -->
     <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
-    <!-- ── OVERLAY / BOTTOM SHEET ── -->
-    <div class="overlay" id="overlay"></div>
-    <div class="bottom-sheet" id="confirmSheet" role="dialog" aria-modal="true">
-      <div class="bottom-sheet__handle"></div>
-      <p class="bottom-sheet__title" id="sheetTitle">Confirmar ação</p>
-      <p class="bottom-sheet__desc" id="sheetDesc"></p>
-      <div class="bottom-sheet__actions">
-        <button class="btn btn-primary btn-full" id="sheetConfirm">Confirmar</button>
-        <button class="btn btn-secondary btn-full" id="sheetCancel">Cancelar</button>
-      </div>
-    </div>
-
     <!-- ── CONTEÚDO PRINCIPAL ── -->
     <main class="app-main" id="appMain">
       
-      <!-- Filtro Rápido Cozinha -->
-      <section aria-label="Status dos Pedidos">
-        <div class="summary-scroll" id="kitchenSummaryScroll">
-          <button class="summary-chip active" data-filter="pending" id="chip-pending">
-            <div class="summary-chip__label">Fila</div>
-            <div class="summary-chip__value danger" id="pendingCount">0</div>
-            <div class="summary-chip__sub">pedidos</div>
+      <!-- Resumo Entregas -->
+      <section aria-label="Status das Entregas">
+        <div class="summary-scroll" id="deliverySummaryScroll">
+          <button class="summary-chip active" data-filter="ready" id="chip-ready">
+            <div class="summary-chip__label">Aguardando</div>
+            <div class="summary-chip__value warning" id="readyCount">0</div>
+            <div class="summary-chip__sub">entregas</div>
           </button>
-          <button class="summary-chip" data-filter="preparing" id="chip-preparing">
-            <div class="summary-chip__label">Preparando</div>
-            <div class="summary-chip__value warning" id="preparingCount">0</div>
-            <div class="summary-chip__sub">em andamento</div>
-          </button>
-          <button class="summary-chip" data-filter="ready" id="chip-ready">
-            <div class="summary-chip__label">Prontos</div>
-            <div class="summary-chip__value success" id="readyCount">0</div>
-            <div class="summary-chip__sub">aguard. entrega</div>
+          <button class="summary-chip" data-filter="delivered" id="chip-delivered">
+            <div class="summary-chip__label">Entregues Hoje</div>
+            <div class="summary-chip__value success" id="deliveredCount">0</div>
+            <div class="summary-chip__sub">concluídas</div>
           </button>
         </div>
       </section>
 
-      <!-- Lista de Pedidos (Agrupados por Pessoa) -->
+      <!-- Lista de Pedidos -->
       <section>
-        <div class="items-list" id="kitchenOrdersList">
-          <!-- Gerado dinamicamente -->
+        <div class="items-list" id="deliveryOrdersList">
           <div class="items-empty">
-            <div class="items-empty__icon"><i class="fas fa-concierge-bell"></i></div>
+            <div class="items-empty__icon"><i class="fas fa-motorcycle"></i></div>
             <div class="items-empty__text">Carregando pedidos...</div>
           </div>
         </div>
@@ -97,6 +79,6 @@
 
     <!-- ── SCRIPTS ── -->
     <script src="./src/script/menu.js"></script>
-    <script type="module" src="./src/script/kitchen.js"></script>
+    <script type="module" src="./src/script/delivery.js"></script>
   </body>
 </html>

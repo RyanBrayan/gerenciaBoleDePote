@@ -15,21 +15,34 @@
     <!-- ── HEADER ── -->
     <header class="app-header">
       <div class="app-header__logo">
-        <button class="header-btn" id="btnBack" aria-label="Voltar">
-          <i class="fas fa-arrow-left"></i>
+        <button class="header-btn" id="sidebarToggle" aria-label="Menu" style="margin-right: var(--space-2); padding: 0; min-width: 40px;">
+          <i class="fas fa-bars" style="font-size: 18px;"></i>
         </button>
-        <span class="app-header__logo-icon" style="margin-left:4px">📋</span>
         <span class="app-header__title">Histórico</span>
       </div>
       <div class="app-header__actions">
         <button class="header-btn" id="btnExportAll" title="Exportar tudo em PDF">
           <i class="fas fa-file-pdf"></i>
         </button>
-        <button class="header-btn" id="btnLogout" title="Sair" style="margin-left: 8px;">
-          <i class="fas fa-sign-out-alt"></i>
-        </button>
       </div>
     </header>
+
+    <!-- ── SIDEBAR MENU ── -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <aside class="sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title"><i class="fas fa-cookie-bite"></i> Menu</span>
+        <button class="sidebar-close" id="sidebarClose" aria-label="Fechar menu">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="./index.html" class="sidebar-link"><i class="fas fa-cash-register"></i> Caixa / Início</a>
+        <a href="./kitchen.html" class="sidebar-link"><i class="fas fa-fire-burner"></i> Cozinha</a>
+        <a href="./delivery.html" class="sidebar-link"><i class="fas fa-motorcycle"></i> Entregas</a>
+        <a href="./history.html" class="sidebar-link"><i class="fas fa-history"></i> Histórico</a>
+      </nav>
+    </aside>
 
     <!-- ── TOAST CONTAINER ── -->
     <div class="toast-container" id="toastContainer" aria-live="polite"></div>
@@ -134,6 +147,7 @@
     <!-- ── SCRIPTS ── -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="./src/script/pdf.js"></script>
+    <script src="./src/script/menu.js"></script>
     <script type="module" src="./src/script/history.js"></script>
   </body>
 </html>
