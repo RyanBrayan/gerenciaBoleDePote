@@ -52,6 +52,12 @@ onAuthStateChanged(auth, (user) => {
           stockDropdown.innerHTML = '<option value="">Selecione um produto do catálogo...</option>' + 
             catalogProducts.map(p => `<option value="${p.id}">${p.name} - R$ ${(p.currentPrice || 0).toFixed(2).replace('.', ',')}</option>`).join('');
         }
+
+        // Força a atualização das sugestões caso um produto já esteja selecionado no caixa
+        const itemDropdown = document.getElementById('itemDropdown');
+        if (itemDropdown && itemDropdown.value) {
+          itemDropdown.dispatchEvent(new Event('change'));
+        }
       });
     });
   } else {
@@ -465,7 +471,7 @@ document.getElementById('itemDropdown').addEventListener('change', (e) => {
         const currentVal = obsInput.value.trim();
         if (currentVal.includes(sugg)) {
           // Remove if exists
-          obsInput.value = currentVal.replace(new RegExp(`(^|,\s*)${sugg}(,\s*|$)`), '$1').replace(/^,\s*|\s*,$/g, '').trim();
+          obsInput.value = currentVal.replace(new RegExp(`(^|,\\s*)${sugg}(,\\s*|$)`), '$1').replace(/^,\\s*|\\s*,$/g, '').trim();
         } else {
           // Add
           obsInput.value = currentVal ? `${currentVal}, ${sugg}` : sugg;
