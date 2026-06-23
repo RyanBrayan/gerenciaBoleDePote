@@ -3,7 +3,7 @@
  * Gerenciamento de Itens — Mobile First
  */
 
-import { auth, db, onAuthStateChanged, signOut, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, where, getDocs, addDoc, ALLOWED_EMAILS } from './firebase-config.js';
+import { auth, db, onAuthStateChanged, signOut, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, where, getDocs, addDoc, verifyAndEnforceAccess } from './firebase-config.js';
 
 let localItems = [];
 let currentFilter = 'all';
@@ -12,6 +12,7 @@ let currentQty = 1;
 let sheetResolve = null;
 let currentUser = null;
 let unsubscribe = null;
+let roleUnsubscribe = null;
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -23,27 +24,22 @@ function getItems() {
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    if (!ALLOWED_EMAILS.includes(user.email)) {
-      signOut(auth);
-      window.location.href = './login.html';
-      return;
-    }
-
     currentUser = user;
     
-    // Escuta ativa de itens em tempo real no Firestore (sala global 'default')
-    const q = query(collection(db, "active_items"), where("eventId", "==", "default"));
-    unsubscribe = onSnapshot(q, (snapshot) => {
-      localItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      populateItemDropdown();
-      renderItems();
-      populatePersonDatalist();
-    }, (error) => {
-      console.error("Erro ao carregar dados em tempo real:", error);
-      showToast("Erro ao conectar no banco de dados", "error");
+    roleUnsubscribe = verifyAndEnforceAccess(user, ['caixa'], (userData) => {
+      // Escuta ativa de itens em tempo real no Firestore (sala global 'default')
+      const q = query(collection(db, "active_items"), where("eventId", "==", "default"));
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        localItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        populateItemDropdown();
+        renderItems();
+        populatePersonDatalist();
+      }, (error) => {
+        console.error("Erro ao carregar dados em tempo real:", error);
+        showToast("Erro ao conectar no banco de dados", "error");
+      });
     });
-
   } else {
     window.location.href = './login.html';
   }

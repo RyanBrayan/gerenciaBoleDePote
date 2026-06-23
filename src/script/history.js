@@ -3,7 +3,7 @@
  * Gerenciamento de Itens — Mobile First
  */
 
-import { auth, db, onAuthStateChanged, signOut, collection, query, where, getDocs, deleteDoc, doc, orderBy, ALLOWED_EMAILS } from './firebase-config.js';
+import { auth, db, onAuthStateChanged, signOut, collection, query, where, getDocs, deleteDoc, doc, orderBy, verifyAndEnforceAccess } from './firebase-config.js';
 
 // ── Estado ─────────────────────────────────────────────────────
 let allSessions = [];
@@ -19,19 +19,17 @@ let searchQuery = '';
 let sheetResolve = null;
 let activeSheet = null;
 let currentUser = null;
+let roleUnsubscribe = null;
 
 // ── Autenticação ─────────────────────────────────────────────
 
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, (user) => {
   if (user) {
-    if (!ALLOWED_EMAILS.includes(user.email)) {
-      signOut(auth);
-      window.location.href = './login.html';
-      return;
-    }
-
     currentUser = user;
-    await init();
+    
+    roleUnsubscribe = verifyAndEnforceAccess(user, ['caixa'], async (userData) => {
+      await init();
+    });
   } else {
     window.location.href = './login.html';
   }

@@ -1,9 +1,10 @@
-import { auth, db, onAuthStateChanged, collection, onSnapshot, query, where, updateDoc, doc, ALLOWED_EMAILS } from './firebase-config.js';
+import { auth, db, onAuthStateChanged, collection, onSnapshot, query, where, updateDoc, doc, verifyAndEnforceAccess } from './firebase-config.js';
 
 let localOrders = []; // Agrupado por pessoa
 let currentFilter = 'ready'; // 'ready' (Aguardando Entrega) ou 'delivered' (Entregues)
 let currentUser = null;
 let unsubscribe = null;
+let roleUnsubscribe = null;
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -28,15 +29,11 @@ function vibrate(pattern = [30]) {
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    if (!ALLOWED_EMAILS.includes(user.email)) {
-      window.location.href = './login.html';
-      return;
-    }
-
     currentUser = user;
     
-    // Escuta ativa de itens em tempo real no Firestore (sala global 'default')
-    const q = query(collection(db, "active_items"), where("eventId", "==", "default"));
+    roleUnsubscribe = verifyAndEnforceAccess(user, ['entregador'], (userData) => {
+      // Escuta ativa de itens em tempo real no Firestore (sala global 'default')
+      const q = query(collection(db, "active_items"), where("eventId", "==", "default"));
     unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       
@@ -97,6 +94,7 @@ onAuthStateChanged(auth, (user) => {
       console.error("Erro ao carregar dados em tempo real nas entregas:", error);
       showToast("Erro ao conectar no banco de dados", "error");
     });
+    }); // Fecha verifyAndEnforceAccess
 
   } else {
     window.location.href = './login.html';
