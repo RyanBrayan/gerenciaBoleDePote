@@ -147,15 +147,19 @@ function renderOrders() {
     card.style.gap = '12px';
     
     // Agrupar os itens iguais dentro do pedido da pessoa
+    // Agrupar os itens iguais dentro do pedido da pessoa
     const itemCounts = {};
     order.items.forEach(i => {
-      if (!itemCounts[i.itemName]) itemCounts[i.itemName] = 0;
-      itemCounts[i.itemName]++;
+      const key = i.itemName + (i.observations ? `|${i.observations}` : '');
+      if (!itemCounts[key]) itemCounts[key] = { name: i.itemName, obs: i.observations, count: 0 };
+      itemCounts[key].count++;
     });
 
-    const itemsHtml = Object.entries(itemCounts).map(([name, qtd]) => {
-      return `<div style="display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; border-bottom: 1px dashed var(--clr-border);">
-        <span style="font-weight: 600;">${qtd}x ${name}</span>
+    const itemsHtml = Object.values(itemCounts).map(v => {
+      const obsHtml = v.obs ? `<div style="font-size: 11px; color: var(--clr-text-muted); margin-top: 2px;">Obs: ${v.obs}</div>` : '';
+      return `<div style="display: flex; flex-direction: column; font-size: 14px; padding: 4px 0; border-bottom: 1px dashed var(--clr-border);">
+        <span style="font-weight: 600;">${v.count}x ${v.name}</span>
+        ${obsHtml}
       </div>`;
     }).join('');
 

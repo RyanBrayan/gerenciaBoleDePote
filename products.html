@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Catálogo de Produtos" />
+    <meta name="theme-color" content="#ea580c" />
+    <title>Catálogo de Produtos — Gerenciamento de Itens</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="./src/css/style.css?v=4" />
+    <style>
+      .chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .suggestion-chip {
+        background: var(--clr-bg);
+        border: 1px solid var(--clr-border);
+        color: var(--clr-text);
+        padding: 4px 10px;
+        border-radius: var(--radius-full);
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .suggestion-chip button {
+        background: none;
+        border: none;
+        color: var(--clr-danger);
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .history-list {
+        margin-top: 12px;
+        border-top: 1px dashed var(--clr-border);
+        padding-top: 12px;
+        display: none;
+      }
+      .history-list.active {
+        display: block;
+      }
+      .history-item {
+        font-size: 12px;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+        color: var(--clr-text-muted);
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- 🌟 HEADER 🌟 -->
+    <header class="app-header">
+      <div class="app-header__logo">
+        <button class="header-btn" id="sidebarToggle" aria-label="Menu" style="margin-right: var(--space-2); padding: 0; min-width: 40px;">
+          <i class="fas fa-bars" style="font-size: 18px;"></i>
+        </button>
+        <span class="app-header__title">Catálogo</span>
+      </div>
+      <div class="app-header__actions">
+        <button class="header-btn" id="btnAddProduct" title="Novo Produto" style="background: var(--clr-brand-light); color: var(--clr-brand); padding: 0 var(--space-3); font-size: 14px; font-weight: 600;">
+          <i class="fas fa-plus"></i> Novo
+        </button>
+      </div>
+    </header>
+
+    <!-- 🌟 SIDEBAR MENU 🌟 -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <aside class="sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title"><i class="fas fa-cookie-bite"></i> Menu</span>
+        <button class="sidebar-close" id="sidebarClose" aria-label="Fechar menu">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="./index.html" class="sidebar-link" id="menuLinkCaixa"><i class="fas fa-cash-register"></i> Caixa / Início</a>
+        <a href="./products.html" class="sidebar-link" id="menuLinkProdutos"><i class="fas fa-box-open"></i> Produtos</a>
+        <a href="./kitchen.html" class="sidebar-link" id="menuLinkCozinha"><i class="fas fa-fire-burner"></i> Cozinha</a>
+        <a href="./delivery.html" class="sidebar-link" id="menuLinkEntregas"><i class="fas fa-motorcycle"></i> Entregas</a>
+        <a href="./history.html" class="sidebar-link" id="menuLinkHistorico"><i class="fas fa-history"></i> Histórico</a>
+        <a href="./admin.html" class="sidebar-link" id="menuLinkAdmin" style="margin-top: auto; border-top: 1px solid var(--clr-border);"><i class="fas fa-users-cog"></i> Painel Admin</a>
+      </nav>
+    </aside>
+
+    <!-- 🌟 TOAST CONTAINER 🌟 -->
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+    <!-- 🌟 OVERLAY / BOTTOM SHEET 🌟 -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Bottom Sheet: Add/Edit Product -->
+    <div class="bottom-sheet" id="productSheet" role="dialog" aria-modal="true">
+      <div class="bottom-sheet__handle"></div>
+      <div class="bottom-sheet__header">
+        <h2 class="bottom-sheet__title" id="productSheetTitle">Adicionar Produto</h2>
+        <button class="bottom-sheet__close" id="btnProductSheetClose"><i class="fas fa-times"></i></button>
+      </div>
+      
+      <form id="productForm" class="bottom-sheet__form">
+        <input type="hidden" id="productId" />
+        
+        <div class="form-group">
+          <label class="form-label" for="productName">Nome do Produto</label>
+          <input type="text" class="form-input" id="productName" required placeholder="Ex: Cachorro Quente" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="productPrice">Preço (R$)</label>
+          <input type="number" step="0.01" class="form-input" id="productPrice" required placeholder="Ex: 15.00" />
+        </div>
+
+        <div class="form-group" style="margin-top: 16px;">
+          <label class="form-label">Sugestões de Observação Rápida</label>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <input type="text" class="form-input" id="newSuggestionInput" placeholder="Ex: Sem purê" />
+            <button type="button" class="btn btn-secondary" id="btnAddSuggestion">Add</button>
+          </div>
+          <div class="chip-list" id="formSuggestionsList"></div>
+        </div>
+        
+        <div class="bottom-sheet__actions" style="margin-top: 24px;">
+          <button type="submit" class="btn btn-primary btn-full">Salvar Produto</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 🌟 CONTEÚDO PRINCIPAL 🌟 -->
+    <main class="app-main" id="appMain">
+      
+      <div style="margin-bottom: var(--space-4);">
+        <p style="color: var(--clr-text-muted); font-size: 14px;">
+          Cadastre os produtos e o preço base. Adicione sugestões de observação para facilitar o trabalho do caixa.
+        </p>
+      </div>
+
+      <!-- Lista de Produtos -->
+      <section>
+        <div class="items-list" id="productsList">
+          <div class="items-empty">
+            <div class="items-empty__icon"><i class="fas fa-box-open"></i></div>
+            <div class="items-empty__text">Carregando catálogo...</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- 🌟 SCRIPTS 🌟 -->
+    <script src="./src/script/menu.js"></script>
+    <script type="module" src="./src/script/products.js"></script>
+  </body>
+</html>

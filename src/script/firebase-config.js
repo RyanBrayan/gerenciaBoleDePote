@@ -104,6 +104,7 @@ function verifyAndEnforceAccess(user, allowedRoles, onGranted) {
 function updateMenuVisibility(role) {
   // Pega os links do menu pelo ID
   const linkCaixa = document.getElementById('menuLinkCaixa');
+  const linkProdutos = document.getElementById('menuLinkProdutos');
   const linkCozinha = document.getElementById('menuLinkCozinha');
   const linkEntregas = document.getElementById('menuLinkEntregas');
   const linkHistorico = document.getElementById('menuLinkHistorico');
@@ -111,6 +112,7 @@ function updateMenuVisibility(role) {
 
   // Esconde tudo primeiro (se os links existirem no HTML da tela atual)
   if (linkCaixa) linkCaixa.style.display = 'none';
+  if (linkProdutos) linkProdutos.style.display = 'none';
   if (linkCozinha) linkCozinha.style.display = 'none';
   if (linkEntregas) linkEntregas.style.display = 'none';
   if (linkHistorico) linkHistorico.style.display = 'none';
@@ -119,12 +121,14 @@ function updateMenuVisibility(role) {
   // Revela baseado no papel
   if (role === 'admin') {
     if (linkCaixa) linkCaixa.style.display = 'flex';
+    if (linkProdutos) linkProdutos.style.display = 'flex';
     if (linkCozinha) linkCozinha.style.display = 'flex';
     if (linkEntregas) linkEntregas.style.display = 'flex';
     if (linkHistorico) linkHistorico.style.display = 'flex';
     if (linkAdmin) linkAdmin.style.display = 'flex';
   } else if (role === 'caixa') {
     if (linkCaixa) linkCaixa.style.display = 'flex';
+    if (linkProdutos) linkProdutos.style.display = 'flex';
     if (linkHistorico) linkHistorico.style.display = 'flex';
   } else if (role === 'cozinha') {
     if (linkCozinha) linkCozinha.style.display = 'flex';

@@ -12,7 +12,9 @@ let currentQty = 1;
 let sheetResolve = null;
 let currentUser = null;
 let unsubscribe = null;
+let unsubscribeCatalog = null;
 let roleUnsubscribe = null;
+let catalogProducts = [];
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -38,6 +40,11 @@ onAuthStateChanged(auth, (user) => {
       }, (error) => {
         console.error("Erro ao carregar dados em tempo real:", error);
         showToast("Erro ao conectar no banco de dados", "error");
+      });
+
+      // Escuta ativa do catálogo de produtos para sugestões
+      unsubscribeCatalog = onSnapshot(collection(db, "catalog_products"), (snapshot) => {
+        catalogProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       });
     });
   } else {
@@ -237,6 +244,7 @@ document.getElementById('addItemButton').addEventListener('click', async functio
   const itemQuantity = parseInt(document.getElementById('itemQuantityInput').value, 10) || 1;
   const paid = document.getElementById('paidCheckbox').checked;
   const delivered = document.getElementById('deliveredCheckbox').checked;
+  const observations = document.getElementById('itemObservations').value.trim();
 
   if (!itemName) {
     showToast('Selecione um produto.', 'error');
@@ -262,6 +270,7 @@ document.getElementById('addItemButton').addEventListener('click', async functio
           personName,
           paid,
           delivered,
+          observations,
           preparationStatus: 'pending',
           saleDate: saleTodayDate,
           soldBy: currentUser.email,
@@ -295,6 +304,7 @@ document.getElementById('addItemButton').addEventListener('click', async functio
 
     // Reset form
     document.getElementById('personNameInput').value = '';
+    document.getElementById('itemObservations').value = '';
     document.getElementById('paidCheckbox').checked = false;
     document.getElementById('deliveredCheckbox').checked = false;
     currentQty = 1;
@@ -375,7 +385,47 @@ function populateItemDropdown() {
   } else if (currentVal && counts[currentVal]?.available > 0) {
     dropdown.value = currentVal;
   }
+  
+  // Dispara o evento change para carregar as sugestões, se houver produto selecionado
+  dropdown.dispatchEvent(new Event('change'));
 }
+
+document.getElementById('itemDropdown').addEventListener('change', (e) => {
+  const productName = e.target.value;
+  const container = document.getElementById('suggestionChipsContainer');
+  const obsInput = document.getElementById('itemObservations');
+  
+  container.innerHTML = '';
+  
+  if (!productName) return;
+  
+  // Buscar o produto no catálogo (assumindo que o itemName é igual ao name do catálogo)
+  const catalogItem = catalogProducts.find(p => p.name === productName);
+  if (catalogItem && catalogItem.suggestions && catalogItem.suggestions.length > 0) {
+    catalogItem.suggestions.forEach(sugg => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'btn btn-secondary';
+      chip.style.padding = '4px 8px';
+      chip.style.fontSize = '12px';
+      chip.textContent = sugg;
+      
+      chip.addEventListener('click', () => {
+        const currentVal = obsInput.value.trim();
+        if (currentVal.includes(sugg)) {
+          // Remove if exists
+          obsInput.value = currentVal.replace(new RegExp(`(^|,\s*)${sugg}(,\s*|$)`), '$1').replace(/^,\s*|\s*,$/g, '').trim();
+        } else {
+          // Add
+          obsInput.value = currentVal ? `${currentVal}, ${sugg}` : sugg;
+        }
+        vibrate([10]);
+      });
+      
+      container.appendChild(chip);
+    });
+  }
+});
 
 // ── Alternar status (pago/entregue) ───────────────────────────
 
@@ -540,6 +590,7 @@ function renderItems() {
         <div class="item-card__info">
           <div class="item-card__name">${item.personName}</div>
           <div class="item-card__product">${item.itemName}</div>
+          ${item.observations ? `<div style="font-size: 11px; color: var(--clr-brand); margin-top: 2px;">Obs: ${item.observations}</div>` : ''}
           <div class="item-card__price">R$ ${(item.price || 0).toFixed(2).replace('.', ',')}</div>
         </div>
         <div class="item-card__badges">

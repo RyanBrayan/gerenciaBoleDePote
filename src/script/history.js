@@ -360,6 +360,7 @@ function buildItemRow(item) {
       <div class="session-item__info">
         <div class="session-item__name">${personName}</div>
         <div class="session-item__product">${item.itemName}</div>
+        ${item.observations ? `<div style="font-size: 11px; color: var(--clr-brand); margin-top: 2px;">Obs: ${item.observations}</div>` : ''}
         ${auditInfo}
       </div>
       <div class="session-item__badges">
