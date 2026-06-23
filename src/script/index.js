@@ -171,6 +171,42 @@ document.querySelectorAll('.card-header').forEach(header => {
   });
 });
 
+// ── Calculadora de Troco ──────────────────────────────────────
+
+function updateTrocoHelper() {
+  const productName = document.getElementById('itemDropdown').value;
+  const qty = parseInt(document.getElementById('itemQuantityInput').value, 10) || 1;
+  
+  let unitPrice = 0;
+  if (productName) {
+    const catalogItem = catalogProducts.find(p => p.name === productName);
+    if (catalogItem) {
+      unitPrice = catalogItem.currentPrice || 0;
+    } else {
+      const active = localItems.find(i => i.itemName === productName);
+      if (active) unitPrice = active.price || 0;
+    }
+  }
+
+  const total = unitPrice * qty;
+  const totalEl = document.getElementById('saleTotalValue');
+  if (totalEl) totalEl.textContent = total.toFixed(2).replace('.', ',');
+
+  const receivedInput = document.getElementById('amountReceivedInput');
+  if (!receivedInput) return;
+  const receivedStr = receivedInput.value.trim();
+  let change = 0;
+  if (receivedStr) {
+    const received = parseFloat(receivedStr.replace(',', '.')) || 0;
+    change = received - total;
+    if (change < 0) change = 0;
+  }
+  const changeEl = document.getElementById('saleChangeValue');
+  if (changeEl) changeEl.textContent = change.toFixed(2).replace('.', ',');
+}
+
+document.getElementById('amountReceivedInput')?.addEventListener('input', updateTrocoHelper);
+
 // ── Controle de quantidade (+/−) ──────────────────────────────
 
 document.getElementById('qtyMinus').addEventListener('click', () => {
@@ -178,6 +214,7 @@ document.getElementById('qtyMinus').addEventListener('click', () => {
     currentQty--;
     document.getElementById('qtyDisplay').textContent = currentQty;
     document.getElementById('itemQuantityInput').value = currentQty;
+    updateTrocoHelper();
     vibrate([10]);
   }
 });
@@ -186,6 +223,7 @@ document.getElementById('qtyPlus').addEventListener('click', () => {
   currentQty++;
   document.getElementById('qtyDisplay').textContent = currentQty;
   document.getElementById('itemQuantityInput').value = currentQty;
+  updateTrocoHelper();
   vibrate([10]);
 });
 
@@ -321,6 +359,8 @@ document.getElementById('addItemButton').addEventListener('click', async functio
     currentQty = 1;
     document.getElementById('qtyDisplay').textContent = '1';
     document.getElementById('itemQuantityInput').value = '1';
+    document.getElementById('amountReceivedInput').value = '';
+    updateTrocoHelper();
 
     showToast(`Venda de ${count}x "${itemName}" para ${personName} registrada!`, 'success');
     vibrate([30, 20, 30]);
@@ -436,6 +476,8 @@ document.getElementById('itemDropdown').addEventListener('change', (e) => {
       container.appendChild(chip);
     });
   }
+
+  updateTrocoHelper();
 });
 
 // ── Alternar status (pago/entregue) ───────────────────────────
