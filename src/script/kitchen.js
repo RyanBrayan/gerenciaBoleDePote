@@ -3,6 +3,7 @@ import { auth, db, onAuthStateChanged, collection, onSnapshot, query, where, upd
 let localOrders = []; // Agrupado por pessoa
 let currentFilter = 'pending';
 let currentUser = null;
+let currentUserRole = null;
 let unsubscribe = null;
 let roleUnsubscribe = null;
 let previousPendingNames = new Set();
@@ -34,6 +35,7 @@ onAuthStateChanged(auth, (user) => {
     currentUser = user;
     
     roleUnsubscribe = verifyAndEnforceAccess(user, ['cozinha'], (userData) => {
+      currentUserRole = userData.role;
       // Escuta ativa de itens em tempo real no Firestore (sala global 'default')
       const q = query(collection(db, "active_items"), where("eventId", "==", "default"));
     unsubscribe = onSnapshot(q, (snapshot) => {
@@ -51,7 +53,9 @@ onAuthStateChanged(auth, (user) => {
             personName: item.personName,
             saleGroupId: groupKey,
             items: [],
-            status: 'ready' // Começa assumindo que tá pronto
+            status: 'ready', // Começa assumindo que tá pronto
+            claimedBy: null,
+            claimedByName: null
           };
         }
         groups[groupKey].items.push(item);
@@ -62,6 +66,12 @@ onAuthStateChanged(auth, (user) => {
           groups[groupKey].status = 'pending';
         } else if (itemStatus === 'preparing' && groups[groupKey].status !== 'pending') {
           groups[groupKey].status = 'preparing';
+        }
+
+        // Extrair quem pegou o pedido para o sistema de claim
+        if (item.startedPreparingBy) {
+          groups[groupKey].claimedBy = item.startedPreparingBy;
+          groups[groupKey].claimedByName = item.startedPreparingByName || item.startedPreparingBy.split('@')[0];
         }
       });
       
@@ -124,24 +134,46 @@ document.querySelectorAll('.summary-chip[data-filter]').forEach(chip => {
 function renderOrders() {
   const body = document.getElementById('kitchenOrdersList');
   
+  // Separar pedidos "Preparando" entre meus e dos outros
+  const isAdmin = currentUserRole === 'admin';
+  const allPreparingOrders = localOrders.filter(o => o.status === 'preparing');
+  const myPreparingOrders = allPreparingOrders.filter(o => !o.claimedBy || o.claimedBy === currentUser?.email);
+  const othersPreparingOrders = allPreparingOrders.filter(o => o.claimedBy && o.claimedBy !== currentUser?.email);
+
   // Atualizar contadores
   const pendingCount = localOrders.filter(o => o.status === 'pending').length;
-  const preparingCount = localOrders.filter(o => o.status === 'preparing').length;
+  const preparingCount = isAdmin ? allPreparingOrders.length : myPreparingOrders.length;
   const readyCount = localOrders.filter(o => o.status === 'ready').length;
   
   document.getElementById('pendingCount').textContent = pendingCount;
   document.getElementById('preparingCount').textContent = preparingCount;
   document.getElementById('readyCount').textContent = readyCount;
 
-  // Filtrar
-  const filtered = localOrders.filter(o => o.status === currentFilter);
+  // Filtrar — Admin vê tudo, cozinha vê apenas os seus na aba "Preparando"
+  let filtered;
+  if (currentFilter === 'preparing') {
+    filtered = isAdmin ? allPreparingOrders : myPreparingOrders;
+  } else {
+    filtered = localOrders.filter(o => o.status === currentFilter);
+  }
 
   if (filtered.length === 0) {
-    body.innerHTML = `
-      <div class="items-empty">
-        <div class="items-empty__icon"><i class="fas fa-check-circle"></i></div>
-        <div class="items-empty__text">Nenhum pedido nesta lista</div>
-      </div>`;
+    body.innerHTML = '';
+    if (!isAdmin && currentFilter === 'preparing' && othersPreparingOrders.length > 0) {
+      const names = [...new Set(othersPreparingOrders.map(o => o.claimedByName || 'Colega'))].join(', ');
+      body.innerHTML = `
+        <div style="text-align: center; padding: 20px; color: var(--clr-text-muted); font-size: 13px; background: var(--clr-surface); border: 1px dashed var(--clr-border); border-radius: var(--radius-md);">
+          <i class="fas fa-users" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+          Você não tem pedidos em preparo.<br>
+          <strong>${othersPreparingOrders.length}</strong> pedido(s) sendo preparado(s) por: <strong>${names}</strong>
+        </div>`;
+    } else {
+      body.innerHTML = `
+        <div class="items-empty">
+          <div class="items-empty__icon"><i class="fas fa-check-circle"></i></div>
+          <div class="items-empty__text">Nenhum pedido nesta lista</div>
+        </div>`;
+    }
     return;
   }
 
@@ -185,6 +217,15 @@ function renderOrders() {
       </div>`;
     }
 
+    // Mostrar quem está preparando/preparou o pedido
+    let claimedByHtml = '';
+    if (order.claimedByName && (order.status === 'preparing' || order.status === 'ready')) {
+      const label = order.status === 'preparing' ? 'Preparando' : 'Preparado';
+      claimedByHtml = `<div style="font-size: 12px; color: var(--clr-text-muted); text-align: center; padding: 4px 8px; background: var(--clr-bg); border-radius: var(--radius-sm);">
+        <i class="fas fa-user-check"></i> ${label} por: <strong>${order.claimedByName}</strong>
+      </div>`;
+    }
+
     const hasToGo = order.items.some(i => i.toGo);
     const toGoHtml = hasToGo ? `<span class="badge badge-paid" style="background: #ea580c; color: white;"><i class="fas fa-shopping-bag"></i> PARA LEVAR</span>` : '';
 
@@ -203,6 +244,8 @@ function renderOrders() {
         ${itemsHtml}
       </div>
 
+      ${claimedByHtml}
+
       <div>
         ${actionBtnHtml}
       </div>
@@ -219,6 +262,15 @@ function renderOrders() {
   body.querySelectorAll('.btn-finish-prep').forEach(btn => {
     btn.addEventListener('click', () => updateOrderStatus(btn.dataset.group, 'ready'));
   });
+
+  // Na aba "Preparando", cozinheiros veem resumo dos pedidos dos outros
+  if (!isAdmin && currentFilter === 'preparing' && othersPreparingOrders.length > 0) {
+    const othersDiv = document.createElement('div');
+    othersDiv.style.cssText = 'text-align: center; padding: 14px; color: var(--clr-text-muted); font-size: 13px; background: var(--clr-surface); border: 1px dashed var(--clr-border); border-radius: var(--radius-md); margin-top: 8px;';
+    const names = [...new Set(othersPreparingOrders.map(o => o.claimedByName || 'Colega'))].join(', ');
+    othersDiv.innerHTML = `<i class="fas fa-users" style="margin-right: 6px;"></i> ${othersPreparingOrders.length} pedido(s) sendo preparado(s) por: <strong>${names}</strong>`;
+    body.appendChild(othersDiv);
+  }
 }
 
 // ── Atualizar Status ───────────────────────────────────────────
@@ -234,6 +286,7 @@ async function updateOrderStatus(groupId, newStatus) {
       
       if (newStatus === 'preparing') {
         payload.startedPreparingBy = currentUser.email;
+        payload.startedPreparingByName = currentUser.displayName || currentUser.email.split('@')[0];
         payload.startedPreparingAt = new Date().toISOString();
       } else if (newStatus === 'ready') {
         payload.finishedPreparingBy = currentUser.email;
